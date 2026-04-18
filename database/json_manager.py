@@ -18,7 +18,13 @@ class DeltaJSONDB:
             "system": {
                 "maintenance": False,
                 "event_multiplier": 1.0,
-                "total_broadcasts": 0
+                "total_broadcasts": 0,
+                "blacklist": [],
+                "ad_whitelist": []
+            },
+            "content": {
+                "weapons": {},
+                "maps": {}
             }
         }
         self._load_from_disk()
