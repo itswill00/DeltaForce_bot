@@ -30,7 +30,7 @@ class DeltaJSONDB:
         self._load_from_disk()
 
     def _load_from_disk(self):
-        """Initial load from file on startup."""
+        """Initial load from file on startup with deep structure verification."""
         if not os.path.exists(self.file_path):
             with open(self.file_path, 'w', encoding='utf-8') as f:
                 json.dump(self._cache, f, indent=4)
@@ -39,10 +39,17 @@ class DeltaJSONDB:
         try:
             with open(self.file_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                # Ensure structure matches
-                for key in self._cache:
+                
+                # Deep structure verification to prevent KeyErrors on existing DBs
+                for key, default_val in self._cache.items():
                     if key not in data:
-                        data[key] = {}
+                        data[key] = default_val
+                    elif isinstance(default_val, dict):
+                        # Ensure second-level keys exist (e.g. system -> maintenance, content -> weapons)
+                        for sub_key, sub_val in default_val.items():
+                            if sub_key not in data[key]:
+                                data[key][sub_key] = sub_val
+                                
                 self._cache = data
         except (json.JSONDecodeError, FileNotFoundError):
             logging.error(f"Corruption detected in {self.file_path}. Initializing empty DB.")
@@ -58,11 +65,8 @@ class DeltaJSONDB:
             self._cache = data
             temp_file = self.file_path + ".tmp"
             try:
-                # Write to temp file first
                 async with aiofiles.open(temp_file, 'w', encoding='utf-8') as f:
                     await f.write(json.dumps(data, indent=4, ensure_ascii=False))
-                
-                # Atomic replace: original file is only replaced if write succeeds
                 os.replace(temp_file, self.file_path)
             except Exception as e:
                 logging.error(f"JSON Write Failure: {e}")

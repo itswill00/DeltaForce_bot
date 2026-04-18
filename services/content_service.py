@@ -7,43 +7,58 @@ class ContentService:
         self.db = db
 
     async def _initialize_if_empty(self):
-        """Seed DB from static JSON files if DB content is empty."""
+        """Seed DB from static JSON files with robust structure checks."""
         data = await self.db.get_all()
-        if not data["content"]["weapons"]:
+        
+        # Ensure content structure exists (though json_manager should handle this, 
+        # double safety for Enterprise maturity)
+        if "content" not in data:
+            data["content"] = {"weapons": {}, "maps": {}}
+
+        changed = False
+        if not data["content"].get("weapons"):
             try:
-                with open("data/loadout.json", "r", encoding="utf-8") as f:
-                    data["content"]["weapons"] = json.load(f).get("senjata", {})
+                if os.path.exists("data/loadout.json"):
+                    with open("data/loadout.json", "r", encoding="utf-8") as f:
+                        data["content"]["weapons"] = json.load(f).get("senjata", {})
+                        changed = True
             except Exception: pass
             
-        if not data["content"]["maps"]:
+        if not data["content"].get("maps"):
             try:
-                with open("data/maps.json", "r", encoding="utf-8") as f:
-                    data["content"]["maps"] = json.load(f)
+                if os.path.exists("data/maps.json"):
+                    with open("data/maps.json", "r", encoding="utf-8") as f:
+                        data["content"]["maps"] = json.load(f)
+                        changed = True
             except Exception: pass
-        await self.db.save(data)
+            
+        if changed:
+            await self.db.save(data)
 
     async def get_weapons(self):
         await self._initialize_if_empty()
         data = await self.db.get_all()
-        return data["content"]["weapons"]
+        return data["content"].get("weapons", {})
 
     async def update_weapon(self, weapon_id: str, weapon_data: dict):
         data = await self.db.get_all()
+        if "content" not in data: data["content"] = {"weapons": {}, "maps": {}}
         data["content"]["weapons"][weapon_id] = weapon_data
         await self.db.save(data)
 
     async def delete_weapon(self, weapon_id: str):
         data = await self.db.get_all()
-        if weapon_id in data["content"]["weapons"]:
+        if "content" in data and weapon_id in data["content"]["weapons"]:
             del data["content"]["weapons"][weapon_id]
             await self.db.save(data)
 
     async def get_maps(self):
         await self._initialize_if_empty()
         data = await self.db.get_all()
-        return data["content"]["maps"]
+        return data["content"].get("maps", {})
 
     async def update_map(self, map_id: str, map_data: dict):
         data = await self.db.get_all()
+        if "content" not in data: data["content"] = {"weapons": {}, "maps": {}}
         data["content"]["maps"][map_id] = map_data
         await self.db.save(data)
