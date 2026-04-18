@@ -56,6 +56,34 @@ def get_tactical_briefing():
     ]
     return random.choice(tips)
 
+@router.message(Command("help"))
+async def cmd_help(message: types.Message):
+    """Panduan Bantuan - Hanya aktif di Private Chat."""
+    if message.chat.type != "private":
+        return # Abaikan jika di grup
+
+    text = get_header("Pusat Bantuan", "❓")
+    text += (
+        "Halo Rekan! Butuh bantuan navigasi? Berikut panduan penggunaan bot Delta Force Hub:\n\n"
+        "<b>👤 Akun & Profil</b>\n"
+        "• <code>/register</code> - Daftar profil komunitas kamu.\n"
+        "• <code>/profile</code> - Cek level, XP, dan statistik kamu.\n"
+        "• <code>/vouch</code> (Reply) - Berikan Reputasi ke rekan setim.\n\n"
+        "<b>🕹️ Aktivitas Grup</b>\n"
+        "• <code>/mabar</code> - Buka lobi cari teman main.\n"
+        "• <code>/trivia</code> - Mulai kuis taktis berhadiah koin.\n"
+        "• <code>/leaderboard</code> - Cek peringkat operator global/grup.\n\n"
+        "<b>🛠️ Lainnya</b>\n"
+        "• <code>/op</code> - Lihat database skill operator.\n"
+        "• <code>/menu</code> - Buka Dashboard utama.\n\n"
+        "<i>Tips: Gunakan tombol-tombol di Dashboard untuk navigasi yang lebih mudah!</i>"
+    )
+    
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🏠 Menu Utama", callback_data="main_menu")
+    
+    await message.answer(text, reply_markup=builder.as_markup())
+
 @router.message(CommandStart())
 @router.message(Command("menu", "dashboard"))
 async def cmd_start(message: types.Message, user_service: UserService, command: CommandStart = None):
@@ -63,7 +91,7 @@ async def cmd_start(message: types.Message, user_service: UserService, command: 
     if message.chat.type in ["group", "supergroup"]:
         text = get_header("HUB TAKTIS AKTIF", "📡")
         text += (
-            f"Halo Rekan-rekan di <b>{message.chat.title}</b>! 👋\n\n"
+            f"Authorized Hub for <b>{message.chat.title}</b>!\n\n"
             "Gunakan <code>/cmd</code> untuk buka menu grup atau <code>/mabar</code> buat cari temen main."
         )
         await message.answer(text, reply_markup=get_group_command_kb(bot_user.username))
@@ -131,16 +159,10 @@ async def cmd_group_menu(message: types.Message):
 
 @router.callback_query(F.data == "main_help")
 async def process_main_help(callback: types.CallbackQuery):
-    text = get_header("PANDUAN KOMUNITAS", "ℹ️")
-    text += (
-        "<b>CARI TEMAN MAIN:</b> Koordinasi bareng tim biar makin kompak.\n"
-        "<b>INFO INTEL:</b> Cek lokasi item-item berharga di peta.\n"
-        "<b>REKOMENDASI SENJATA:</b> Intip modifikasi senjata paling oke.\n"
-        "<b>BURSA ITEM:</b> Tukar koin kamu sama badge keren.\n"
-        "<b>KUIS TRIVIA:</b> Uji pengetahuanmu soal Delta Force.\n\n"
-        "<i>Ada kendala? Hubungi admin ya!</i>"
-    )
-    builder = InlineKeyboardBuilder()
-    builder.button(text="🏠 KEMBALI KE MENU", callback_data="main_menu")
-    await callback.message.edit_text(text, reply_markup=builder.as_markup())
+    # Reuse help text or redirect to DM
+    if callback.message.chat.type != "private":
+        await callback.answer("Panduan detail hanya tersedia di Private Message (DM).", show_alert=True)
+        return
+        
+    await cmd_help(callback.message)
     await callback.answer()
