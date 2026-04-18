@@ -167,9 +167,30 @@ async def cmd_sys_logic(message, user_service, lfg_service):
     await message.answer(text, reply_markup=builder.as_markup())
 
 @router.message(Command("refresh"))
-async def cmd_refresh(message: types.Message):
+async def cmd_refresh_prompt(message: types.Message):
+    """Prompt the owner for confirmation before refreshing."""
     if not is_owner(message.from_user.id): return
-    status_msg = await message.answer("◈ <b>Memulai Prosedur Update...</b>\n\n⬢ Menarik kode dari GitHub...")
+    
+    text = (
+        get_header("Konfirmasi Update", "🔄") +
+        "Sistem akan menarik kode terbaru dari GitHub dan melakukan restart otomatis.\n\n"
+        "<b>Apakah Anda yakin ingin melanjutkan?</b>"
+    )
+    
+    builder = InlineKeyboardBuilder()
+    builder.button(text="✅ LANJUTKAN UPDATE", callback_data="admin_confirm_refresh")
+    builder.button(text="◃ BATALKAN", callback_data="close_msg")
+    builder.adjust(1)
+    
+    await message.answer(text, reply_markup=builder.as_markup())
+
+@router.callback_query(F.data == "admin_confirm_refresh")
+async def process_refresh_execution(callback: types.CallbackQuery):
+    if not is_owner(callback.from_user.id): return
+    
+    status_msg = callback.message
+    await status_msg.edit_text("◈ <b>Memulai Prosedur Update...</b>\n\n⬢ Menarik kode dari GitHub...")
+    
     try:
         # Combine stdout and stderr for full visibility
         process = await asyncio.create_subprocess_shell(
@@ -195,9 +216,9 @@ async def cmd_refresh(message: types.Message):
             "<b>Sistem akan segera restart...</b>"
         )
         
-        await send_log(message.bot, "ADMIN_ACTION", f"Owner memicu /refresh. Sistem melakukan pull dan restart.")
+        await send_log(callback.bot, "ADMIN_ACTION", f"Owner mengonfirmasi /refresh. Sistem melakukan pull dan restart.")
         await asyncio.sleep(2)
-        os.execv(sys.executable, [sys.executable, sys.argv[0], "--restart", str(message.chat.id), str(status_msg.message_id)])
+        os.execv(sys.executable, [sys.executable, sys.argv[0], "--restart", str(callback.message.chat.id), str(status_msg.message_id)])
     except Exception as e:
         await status_msg.edit_text(f"❌ <b>Update Gagal:</b>\n<code>{str(e)}</code>")
 
