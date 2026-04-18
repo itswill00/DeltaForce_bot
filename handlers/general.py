@@ -15,68 +15,57 @@ router = Router()
 def get_dashboard_kb(is_registered: bool = False, page: int = 1):
     builder = InlineKeyboardBuilder()
     if not is_registered:
-        builder.button(text="🚀 DAFTAR SEKARANG", callback_data="start_register")
-        builder.button(text="ℹ️ PANDUAN PENGGUNAAN", callback_data="main_help")
+        builder.button(text="◈ DAFTAR SEKARANG", callback_data="start_register")
+        builder.button(text="◇ PANDUAN PENGGUNAAN", callback_data="main_help")
         builder.adjust(1)
     else:
         if page == 1:
-            builder.button(text="👤 PROFIL", callback_data="main_profile")
-            builder.button(text="🕹️ CARI TIM", callback_data="main_mabar")
-            builder.button(text="🔍 DATA INTEL", callback_data="main_intel")
-            builder.button(text="🔫 LOADOUTS", callback_data="main_meta")
-            builder.button(text="➡️ MENU LAIN", callback_data="main_page_2")
+            builder.button(text="◇ PROFIL", callback_data="main_profile")
+            builder.button(text="▣ CARI TIM", callback_data="main_mabar")
+            builder.button(text="⬡ DATA INTEL", callback_data="main_intel")
+            builder.button(text="⬢ LOADOUTS", callback_data="main_meta")
+            builder.button(text="▹ MENU LAIN", callback_data="main_page_2")
             builder.adjust(2, 2, 1)
         else:
-            builder.button(text="🏆 PERINGKAT", callback_data="main_leaderboard")
-            builder.button(text="🛒 BURSA ITEM", callback_data="main_shop")
+            builder.button(text="◈ PERINGKAT", callback_data="main_leaderboard")
+            builder.button(text="⌬ BURSA ITEM", callback_data="main_shop")
             builder.button(text="🧠 TRIVIA", callback_data="main_trivia")
             builder.button(text="🚑 OPERATOR", callback_data="main_operator")
-            builder.button(text="⬅️ KEMBALI", callback_data="main_page_1")
+            builder.button(text="◃ KEMBALI", callback_data="main_page_1")
             builder.adjust(2, 2, 1)
             
     return builder.as_markup()
 
 def get_group_command_kb(bot_username: str):
     builder = InlineKeyboardBuilder()
-    builder.button(text="🕹️ CARI TIM MABAR", callback_data="main_mabar")
+    builder.button(text="▣ CARI TIM MABAR", callback_data="main_mabar")
     builder.button(text="🧠 KUIS TRIVIA", callback_data="main_trivia")
-    builder.button(text="🏆 CEK PERINGKAT", callback_data="main_leaderboard")
-    builder.button(text="👤 PROFIL (DM)", url=f"https://t.me/{bot_username}?start=profile")
+    builder.button(text="◈ CEK PERINGKAT", callback_data="main_leaderboard")
+    builder.button(text="◇ PROFIL (DM)", url=f"https://t.me/{bot_username}?start=profile")
     builder.adjust(2)
     return builder.as_markup()
-
-def get_tactical_briefing():
-    tips = [
-        "Selalu periksa rute ekstraksi sebelum memulai operasi.",
-        "Item berharga tinggi sering ditemukan di area dengan tingkat bahaya tinggi.",
-        "Gunakan role Medic untuk meningkatkan ketahanan tim.",
-        "Granat asap sangat efektif untuk menutupi gerakan saat looting.",
-        "Rute Zero Dam sangat direkomendasikan untuk ekstraksi aman.",
-        "Bermain dalam skuad penuh memberikan bonus koordinasi XP."
-    ]
-    return random.choice(tips)
 
 @router.message(Command("help"))
 async def cmd_help(message: types.Message):
     if message.chat.type != "private": return
 
-    text = get_header("Pusat Bantuan", "❓")
+    text = get_header("Pusat Bantuan", "◇")
     text += (
         "Selamat datang di panduan navigasi Delta Force Hub. Berikut perintah yang tersedia:\n\n"
-        "<b>👤 Akun & Profil</b>\n"
+        "<b>◇ Akun & Profil</b>\n"
         "• <code>/register</code> - Pendaftaran profil operator.\n"
         "• <code>/profile</code> - Informasi level dan statistik.\n"
         "• <code>/vouch</code> - Memberikan reputasi ke rekan tim.\n\n"
-        "<b>🕹️ Aktivitas Grup</b>\n"
+        "<b>▣ Aktivitas Grup</b>\n"
         "• <code>/mabar</code> - Mencari teman untuk bermain bareng.\n"
         "• <code>/trivia</code> - Simulasi pengetahuan berhadiah koin.\n"
         "• <code>/leaderboard</code> - Papan peringkat operator.\n\n"
-        "<b>🛠️ Lainnya</b>\n"
+        "<b>⬡ Lainnya</b>\n"
         "• <code>/op</code> - Database kemampuan operator.\n"
         "• <code>/menu</code> - Kembali ke menu utama."
     )
     builder = InlineKeyboardBuilder()
-    builder.button(text="🏠 MENU UTAMA", callback_data="main_menu")
+    builder.button(text="◃ MENU UTAMA", callback_data="main_menu")
     await message.answer(text, reply_markup=builder.as_markup())
 
 @router.message(CommandStart())
@@ -84,7 +73,7 @@ async def cmd_start(message: types.Message, user_service: UserService, command: 
     bot_user = await message.bot.get_me()
     
     if message.chat.type in ["group", "supergroup"]:
-        text = get_header("Hub Taktis Aktif", "📡")
+        text = get_header("Hub Taktis Aktif", "◈")
         text += (
             f"Selamat datang di Hub Komunitas <b>{message.chat.title}</b>.\n\n"
             "Gunakan perintah di bawah untuk memulai koordinasi skuad:"
@@ -110,7 +99,7 @@ async def cmd_start(message: types.Message, user_service: UserService, command: 
             await cmd_help(message)
             return
 
-    text = get_header("Delta Force Indonesia", "🏠")
+    text = get_header("Delta Force Hub", "◈")
     
     if not is_reg:
         text += (
@@ -120,16 +109,8 @@ async def cmd_start(message: types.Message, user_service: UserService, command: 
             "Silakan daftarkan diri Anda untuk mulai mencatat statistik."
         )
     else:
-        today = datetime.now().date().isoformat()
-        briefing = ""
-        if today != user_data.last_login:
-            tip = get_tactical_briefing()
-            briefing = f"📢 <b>Info:</b> <i>\"{tip}\"</i>\n\n"
-            await user_service.update_last_login(user_id)
-            
         text += (
             f"Halo kembali, <b>{user_data.ign}</b>. Selamat datang di menu utama.\n\n"
-            f"{briefing}"
             "Pilih layanan yang Anda butuhkan di bawah ini:"
         )
         
@@ -165,7 +146,7 @@ async def process_main_page_2(callback: types.CallbackQuery, user_service: UserS
 async def cmd_group_menu(message: types.Message):
     if message.chat.type not in ["group", "supergroup"]: return
     bot_user = await message.bot.get_me()
-    text = get_header("Menu Grup", "🕹️")
+    text = get_header("Menu Grup", "▣")
     text += "Pilih aksi cepat untuk grup ini:"
     await message.answer(text, reply_markup=get_group_command_kb(bot_user.username))
 
