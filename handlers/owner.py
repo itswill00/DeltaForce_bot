@@ -133,11 +133,16 @@ async def admin_security_hub(callback: types.CallbackQuery, security_service: Se
 @router.callback_query(F.data == "admin_bl_add")
 async def admin_bl_add_prompt(callback: types.CallbackQuery, state: FSMContext):
     if not is_owner(callback.from_user.id): return
-    await callback.message.answer("◈ <b>SECURITY PROTOCOL</b>\nMasukkan kata/frasa yang ingin dilarang secara global:")
+    builder = InlineKeyboardBuilder()
+    builder.button(text="◃ BATAL", callback_data="admin_cancel_state")
+    await callback.message.answer(
+        "◈ <b>SECURITY PROTOCOL</b>\nMasukkan kata/frasa yang ingin dilarang secara global:",
+        reply_markup=builder.as_markup()
+    )
     await state.set_state(AdminState.waiting_for_blacklist_word)
     await callback.answer()
 
-@router.message(AdminState.waiting_for_blacklist_word)
+@router.message(AdminState.waiting_for_blacklist_word, ~F.text.startswith("/"))
 async def process_bl_add(message: types.Message, state: FSMContext, security_service: SecurityService):
     if not is_owner(message.from_user.id): return
     word = message.text.strip().lower()
@@ -198,11 +203,17 @@ async def process_refresh_execution(callback: types.CallbackQuery):
 @router.callback_query(F.data == "admin_mass_reward_prompt")
 async def admin_reward_prompt(callback: types.CallbackQuery, state: FSMContext):
     if not is_owner(callback.from_user.id): return
-    await callback.message.edit_text(get_header("Suntikan Dana Massal", "🎁") + "Masukkan jumlah <b>KOIN</b> yang akan dibagikan ke SELURUH user terdaftar:", reply_markup=InlineKeyboardBuilder().button(text="◃ BATAL", callback_data="admin_dashboard").as_markup())
+    builder = InlineKeyboardBuilder()
+    builder.button(text="◃ BATAL", callback_data="admin_cancel_state")
+    await callback.message.edit_text(
+        get_header("Suntikan Dana Massal", "🎁") + 
+        "Masukkan jumlah <b>KOIN</b> yang akan dibagikan ke SELURUH user terdaftar:", 
+        reply_markup=builder.as_markup()
+    )
     await state.set_state(AdminState.waiting_for_mass_reward)
     await callback.answer()
 
-@router.message(AdminState.waiting_for_mass_reward)
+@router.message(AdminState.waiting_for_mass_reward, ~F.text.startswith("/"))
 async def process_mass_reward(message: types.Message, state: FSMContext):
     if not is_owner(message.from_user.id): return
     val = message.text.strip()
@@ -259,12 +270,26 @@ async def admin_set_value_prompt(callback: types.CallbackQuery, state: FSMContex
     if not is_owner(callback.from_user.id): return
     parts = callback.data.split("_")
     target_id, field = parts[2], parts[3]
+    
     await state.update_data(target_id=target_id, field=field)
-    await callback.message.answer(f"◈ <b>SET {field.upper()}</b>\nMasukkan nilai baru untuk ID <code>{target_id}</code>:")
+    
+    builder = InlineKeyboardBuilder()
+    builder.button(text="◃ BATAL", callback_data="admin_cancel_state")
+    
+    await callback.message.answer(
+        f"◈ <b>SET {field.upper()}</b>\nMasukkan nilai baru untuk ID <code>{target_id}</code>:",
+        reply_markup=builder.as_markup()
+    )
     await state.set_state(AdminState.waiting_for_value_set)
     await callback.answer()
 
-@router.message(AdminState.waiting_for_value_set)
+@router.callback_query(F.data == "admin_cancel_state")
+async def process_admin_cancel(callback: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.message.delete()
+    await callback.answer("Aksi dibatalkan.")
+
+@router.message(AdminState.waiting_for_value_set, ~F.text.startswith("/"))
 async def process_admin_set_value(message: types.Message, state: FSMContext, user_service: UserService):
     if not is_owner(message.from_user.id): return
     val = message.text.strip()
