@@ -20,7 +20,7 @@ def get_dashboard_kb(user_id: int, is_registered: bool = False, page: int = 1):
         builder.button(text="◇ PANDUAN PENGGUNAAN", callback_data="main_help")
         
         # Invisible Command Center for Owner (Unregistered)
-        if user_id == settings.owner_id:
+        if int(user_id) == int(settings.owner_id):
             builder.button(text="◈ COMMAND CENTER", callback_data="admin_dashboard")
             
         builder.adjust(1)
@@ -33,7 +33,7 @@ def get_dashboard_kb(user_id: int, is_registered: bool = False, page: int = 1):
             builder.button(text="▹ MENU LAIN", callback_data="main_page_2")
             
             # Invisible Command Center for Owner (Registered, Page 1)
-            if user_id == settings.owner_id:
+            if int(user_id) == int(settings.owner_id):
                 builder.button(text="◈ COMMAND CENTER", callback_data="admin_dashboard")
                 
             builder.adjust(2, 2, 1)
@@ -137,7 +137,7 @@ async def cmd_start(message: types.Message, user_service: UserService, command: 
         )
         
     text += "\n" + get_footer()
-    await message.answer(text, reply_markup=get_dashboard_kb(user_id, is_reg))
+    await message.answer(text, reply_markup=get_dashboard_kb(user_id=user_id, is_registered=is_reg))
 
 @router.callback_query(F.data == "main_menu")
 @router.callback_query(F.data == "main_page_1")
@@ -145,7 +145,7 @@ async def process_main_menu(callback: types.CallbackQuery, user_service: UserSer
     user_data = await user_service.get_user(callback.from_user.id)
     is_reg = user_data and user_data.ign
     text = render_dashboard(user_data, is_reg, page=1)
-    await callback.message.edit_text(text, reply_markup=get_dashboard_kb(callback.from_user.id, is_reg, page=1))
+    await callback.message.edit_text(text, reply_markup=get_dashboard_kb(user_id=callback.from_user.id, is_registered=is_reg, page=1))
     await callback.answer()
 
 @router.callback_query(F.data == "main_page_2")
@@ -156,7 +156,7 @@ async def process_main_page_2(callback: types.CallbackQuery, user_service: UserS
         await callback.answer("Silakan mendaftar terlebih dahulu.", show_alert=True)
         return
     text = render_dashboard(user_data, is_reg, page=2)
-    await callback.message.edit_text(text, reply_markup=get_dashboard_kb(callback.from_user.id, is_reg, page=2))
+    await callback.message.edit_text(text, reply_markup=get_dashboard_kb(user_id=callback.from_user.id, is_registered=is_reg, page=2))
     await callback.answer()
 
 @router.message(Command("cmd", "gmenu"))
