@@ -23,13 +23,15 @@ dp = Dispatcher()
 from middlewares.db_session import DbSessionMiddleware
 from middlewares.registration import RegistrationMiddleware
 from middlewares.event_logger import EventLoggerMiddleware
+from middlewares.throttling import ThrottlingMiddleware
 
 async def main():
-    # 1. Setup Middlewares
-    dp.update.outer_middleware(DbSessionMiddleware())
-    dp.update.outer_middleware(EventLoggerMiddleware()) # Log every event
-    dp.message.middleware(RegistrationMiddleware())
-    dp.callback_query.middleware(RegistrationMiddleware())
+    # 1. Setup Enterprise Middlewares (Order Matters)
+    dp.update.outer_middleware(ThrottlingMiddleware(rate_limit=1.5)) # Anti-Spam: Max 1 interaksi per 1.5 detik
+    dp.update.outer_middleware(DbSessionMiddleware())                # DB Session Injector
+    dp.update.outer_middleware(EventLoggerMiddleware())              # Log all events to Owner Group
+    dp.message.middleware(RegistrationMiddleware())                  # Block unregistered actions
+    dp.callback_query.middleware(RegistrationMiddleware())           # Block unregistered actions
     
     # 2. Include Routers
     from handlers import general, profile, lfg, meta, leaderboard, admin, owner, operator, shop, inline, group_settings, intel, trivia
@@ -58,7 +60,7 @@ async def main():
     asyncio.create_task(auto_intel_scheduler(bot))
     asyncio.create_task(auto_news_fetcher(bot))
     
-    # CRITICAL: Data Protection
+    # CRITICAL: Data Protection (Backup to Telegram)
     asyncio.create_task(database_backup_scheduler(bot))
 
     # Start polling
