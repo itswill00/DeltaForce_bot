@@ -1,51 +1,37 @@
 {
   "d-wolf": {
-    "name": "D-Wolf",
+    "name": "Kai Silva (D-Wolf)",
     "role": "Assault",
-    "description": "Seorang grenadier taktis yang mematikan dari jarak dekat maupun menengah.",
-    "active_skill": "Triple Blaster - Melontarkan tiga granat fragmentasi yang dapat diarahkan.",
-    "passive_skill": "Slide Master - Dapat menembak selagi melakukan sliding (meluncur) di tanah."
+    "description": "Spesialis ofensif dengan mobilitas tinggi, sangat efektif untuk melakukan 'flanking' dan menerobos garis pertahanan musuh.",
+    "active_skill": "Triple Blaster: Melontarkan granat fragmen AT berdaya ledak tinggi.",
+    "passive_skill": "Tactical Slide: Memberikan bonus kecepatan gerak dan akurasi saat meluncur."
   },
   "luna": {
-    "name": "Luna",
+    "name": "Luna (Luna Chen)",
     "role": "Recon",
-    "description": "Ahli pemanah mematikan dan pencari jejak ulung dalam medan tempur.",
-    "active_skill": "Recon Arrow - Menembakkan panah sensor yang mengungkap lokasi musuh menembus tembok.",
-    "passive_skill": "Hunter's Instinct - Otomatis mendeteksi jejak kaki musuh dalam jarak dekat dari HUD."
+    "description": "Unit intelijen jarak jauh. Tugas utamanya adalah mengungkap posisi musuh dan memberikan dukungan presisi dari lini belakang.",
+    "active_skill": "Detection Arrow: Panah sonar yang menandai posisi musuh secara 'real-time' dalam radius luas.",
+    "passive_skill": "Hunter's Eye: Menandai musuh yang terkena damage secara otomatis untuk rekan satu tim."
   },
   "stinger": {
-    "name": "Stinger",
+    "name": "Stinger (Roy Smee)",
     "role": "Medic",
-    "description": "Pakar medis lapangan bersenjatakan teknologi penyembuh canggih dari kejauhan.",
-    "active_skill": "Healing Drone - Menerbangkan drone cerdas terbang yang menyembuhkan HP teman.",
-    "passive_skill": "Quick Revive - Dapat menyuntikan adrenalin (revive) ke teman jauh lebih cepat."
+    "description": "Tulang punggung skuad. Mampu menjaga kondisi kesehatan tim tetap prima bahkan di tengah baku tembak intens.",
+    "active_skill": "Healing Mist: Drone medis yang menyembuhkan banyak rekan sekaligus secara area (AoE).",
+    "passive_skill": "Combat Surgeon: Melakukan 'Revive' dengan sisa HP yang lebih banyak dan waktu lebih cepat."
   },
   "shepherd": {
-    "name": "Shepherd",
+    "name": "Shepherd (Terry Musa)",
     "role": "Engineer",
-    "description": "Karakter defensif yang ahli mengubah ritme pertarungan menggunakan teknologi sonik.",
-    "active_skill": "Sonic Trap - Menaruh ranjau suara yang melumpuhkan gerakan (stun) pendengaran musuh.",
-    "passive_skill": "Hardened Armor - Start dengan buff pelindung badan dan resistance ledakan ekstra."
+    "description": "Pakar pertahanan dan area denial. Sangat krusial untuk mengamankan titik ekstraksi atau mempertahankan loot berharga.",
+    "active_skill": "Sonic Trap: Ranjau sonik yang melambatkan gerakan dan mengganggu pendengaran musuh secara total.",
+    "passive_skill": "Buff Barrier: Mengurangi damage ledakan yang diterima oleh rekan tim di sekitarnya."
   },
   "vyron": {
-    "name": "Vyron",
+    "name": "Vyron (Wang Yuhao)",
     "role": "Assault",
-    "description": "Mantan anggota pasukan penerobos paksa (Breacher).",
-    "active_skill": "Airburst Launcher - Pelontar peledak di tangan robotnya yang sangat lincah.",
-    "passive_skill": "Dynamic Propulsion - Daya loncat dan gerak sangat agresif."
-  },
-  "hackclaw": {
-    "name": "Hackclaw",
-    "role": "Recon",
-    "description": "Hacker tingkat tinggi yang mengambil alih aliran informasi dalam perang.",
-    "active_skill": "Signal Jammer - Membutakan radar musuh, map musuh, dan me-retes berbagai gadget musuh.",
-    "passive_skill": "Silent Step - Jejak langkahnya nyaris tidak menghasilkan desibel suara apapun."
-  },
-  "uluru": {
-    "name": "Uluru",
-    "role": "Engineer",
-    "description": "Tangk baja hidup yang dirancang khusus untuk menjadi tameng utama saat pertempuran terbuka.",
-    "active_skill": "Deployable Cover - Melemparkan bunker besi portabel yang 100% tahan tembakan peluru.",
-    "passive_skill": "Sentry Expert - Efisiensi penggunaan Turret dan alat-alat kendaraan."
+    "description": "Unit breacher dengan daya rusak area. Menggunakan teknologi kinetik untuk menghancurkan formasi lawan.",
+    "active_skill": "Airburst Launcher: Menembakkan proyektil yang meledak di udara, sangat efektif melawan musuh di balik cover.",
+    "passive_skill": "Kinetic Shield: Mendapatkan shield tambahan sementara saat melakukan dash ofensif."
   }
 }

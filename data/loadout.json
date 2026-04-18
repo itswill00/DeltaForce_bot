@@ -1,58 +1,46 @@
 {
   "senjata": {
-    "m416": {
-      "name": "M416",
-      "category": "Assault Rifles",
+    "m4a1": {
+      "name": "M4A1",
+      "category": "Assault Rifle",
       "tier": "S",
-      "best_loadout": "Holographic Sight, Vertical Grip, Compensator, Extended Mag"
+      "best_loadout": "Monolithic Suppressor, Marksman Barrel, Commando Foregrip, 60-Round Mag, Precision Stock (Fokus: Recoil Control)"
     },
-    "scar_h": {
-      "name": "SCAR-H",
-      "category": "Assault Rifles",
-      "tier": "A",
-      "best_loadout": "ACOG 4x, Angled Grip, Heavy Barrel"
+    "ak-12": {
+      "name": "AK-12",
+      "category": "Assault Rifle",
+      "tier": "A+",
+      "best_loadout": "Tactical Muzzle, Vertical Foregrip, Rubberized Grip Tape, 45-Round Mag (Fokus: Damage Output)"
     },
     "as_val": {
       "name": "AS VAL",
-      "category": "Assault Rifles",
+      "category": "Assault Rifle",
       "tier": "S+",
-      "best_loadout": "Red Dot, Canted Sight, Extended Mag (Built-in Suppressor)"
+      "best_loadout": "Integral Suppressor, Laser Sight, Skeleton Stock, 30-Round Extended Mag (Fokus: CQC/Stealth)"
     },
     "k98": {
       "name": "Kar98k",
-      "category": "Sniper Rifles",
-      "tier": "A+",
-      "best_loadout": "8x Scope, Sniper Compensator, Cheek Pad"
-    },
-    "sr_25": {
-      "name": "SR-25 (DMR)",
-      "category": "Sniper Rifles",
-      "tier": "B",
-      "best_loadout": "6x Scope, Vertical Grip, Suppressor, Extended Sniper Mag"
+      "category": "Sniper Rifle",
+      "tier": "S",
+      "best_loadout": "Variable Zoom Scope, Precision Barrel, Tac Laser, Hollow Stock (Fokus: ADS Speed)"
     },
     "vector": {
       "name": "Vector",
       "category": "SMG",
-      "tier": "A",
-      "best_loadout": "Red Dot, Half Grip, Suppressor, Extended Mag (Crucial)"
+      "tier": "S",
+      "best_loadout": "Osprey Suppressor, Merc Foregrip, 50-Round Drum Mag, Stippled Grip (Fokus: Hipfire & Move Speed)"
     },
     "p90": {
       "name": "P90",
       "category": "SMG",
-      "tier": "S",
-      "best_loadout": "Holographic, Default Mag (50 Rounds), Compensator"
+      "tier": "A",
+      "best_loadout": "Monolithic Suppressor, Fly Stock, Tac Laser (Fokus: Agility)"
     },
     "m249": {
-      "name": "M249 LMG",
+      "name": "M249",
       "category": "LMG",
-      "tier": "B",
-      "best_loadout": "Red Dot, Bipod (Fixed), Compensator"
-    },
-    "m60": {
-      "name": "M60 LMG",
-      "category": "LMG",
-      "tier": "B-",
-      "best_loadout": "Holographic, Heavy Bipod, Extended Box Mag"
+      "tier": "B+",
+      "best_loadout": "Heavy Barrel, Snatch Grip, 200-Round Belt, Thermal Scope (Fokus: Suppression Fire)"
     }
   }
 }
