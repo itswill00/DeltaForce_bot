@@ -1,0 +1,58 @@
+{
+  "senjata": {
+    "m416": {
+      "name": "M416",
+      "category": "Assault Rifles",
+      "tier": "S",
+      "best_loadout": "Holographic Sight, Vertical Grip, Compensator, Extended Mag"
+    },
+    "scar_h": {
+      "name": "SCAR-H",
+      "category": "Assault Rifles",
+      "tier": "A",
+      "best_loadout": "ACOG 4x, Angled Grip, Heavy Barrel"
+    },
+    "as_val": {
+      "name": "AS VAL",
+      "category": "Assault Rifles",
+      "tier": "S+",
+      "best_loadout": "Red Dot, Canted Sight, Extended Mag (Built-in Suppressor)"
+    },
+    "k98": {
+      "name": "Kar98k",
+      "category": "Sniper Rifles",
+      "tier": "A+",
+      "best_loadout": "8x Scope, Sniper Compensator, Cheek Pad"
+    },
+    "sr_25": {
+      "name": "SR-25 (DMR)",
+      "category": "Sniper Rifles",
+      "tier": "B",
+      "best_loadout": "6x Scope, Vertical Grip, Suppressor, Extended Sniper Mag"
+    },
+    "vector": {
+      "name": "Vector",
+      "category": "SMG",
+      "tier": "A",
+      "best_loadout": "Red Dot, Half Grip, Suppressor, Extended Mag (Crucial)"
+    },
+    "p90": {
+      "name": "P90",
+      "category": "SMG",
+      "tier": "S",
+      "best_loadout": "Holographic, Default Mag (50 Rounds), Compensator"
+    },
+    "m249": {
+      "name": "M249 LMG",
+      "category": "LMG",
+      "tier": "B",
+      "best_loadout": "Red Dot, Bipod (Fixed), Compensator"
+    },
+    "m60": {
+      "name": "M60 LMG",
+      "category": "LMG",
+      "tier": "B-",
+      "best_loadout": "Holographic, Heavy Bipod, Extended Box Mag"
+    }
+  }
+}

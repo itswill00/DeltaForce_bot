@@ -1,0 +1,70 @@
+{
+  "zerodam": {
+    "name": "Zero Dam",
+    "description": "Area bendungan raksasa dengan banyak titik navigasi vertikal dan fasilitas industri.",
+    "hotspots": [
+      "Administrative Building (Loot Merah Tinggi)",
+      "Dam Wall (Sniper Nest)",
+      "Main Generator Room"
+    ],
+    "extractions": [
+      {
+        "name": "Main Gate",
+        "type": "Normal",
+        "requirement": "None"
+      },
+      {
+        "name": "Rescue Helicopter",
+        "type": "Special",
+        "requirement": "Butuh Radio Transmitter"
+      },
+      {
+        "name": "Sewer Pipe",
+        "type": "Emergency",
+        "requirement": "Hanya di 5 Menit Terakhir"
+      }
+    ]
+  },
+  "spacecity": {
+    "name": "Space City",
+    "description": "Kota futuristik yang hancur, menawarkan pertempuran urban CQB (Close Quarters Battle).",
+    "hotspots": [
+      "Center Mall (Chaos Zone)",
+      "Research Lab (Tech Loot)",
+      "Secret Vault (Butuh Keycard)"
+    ],
+    "extractions": [
+      {
+        "name": "Underground Metro",
+        "type": "Normal",
+        "requirement": "None"
+      },
+      {
+        "name": "Armored Truck",
+        "type": "Paid",
+        "requirement": "50,000 Credits"
+      }
+    ]
+  },
+  "layaligrove": {
+    "name": "Layali Grove",
+    "description": "Daerah pedesaan yang asri namun mematikan dengan hutan lebat dan desa terpencil.",
+    "hotspots": [
+      "Central Village (High Risk)",
+      "Logging Site",
+      "Ancient Ruins"
+    ],
+    "extractions": [
+      {
+        "name": "Forest Trail",
+        "type": "Normal",
+        "requirement": "None"
+      },
+      {
+        "name": "River Boat",
+        "type": "Timed",
+        "requirement": "Datang setiap 10 menit"
+      }
+    ]
+  }
+}

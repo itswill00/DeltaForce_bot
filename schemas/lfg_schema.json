@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LFG Entry",
+  "type": "object",
+  "additionalProperties": {
+    "type": "object",
+    "properties": {
+      "host_id": {"type": "integer"},
+      "host_name": {"type": "string"},
+      "players": {
+        "type": "array",
+        "items": {"type": "integer"}
+      },
+      "max_players": {"type": "integer"},
+      "status": {"type": "string", "enum": ["open", "closed"]},
+      "timestamp": {"type": "number"},
+      "lfg_type": {"type": "string"}
+    },
+    "required": ["host_id", "host_name", "players", "max_players", "status", "timestamp"]
+  }
+}

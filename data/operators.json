@@ -1,0 +1,51 @@
+{
+  "d-wolf": {
+    "name": "D-Wolf",
+    "role": "Assault",
+    "description": "Seorang grenadier taktis yang mematikan dari jarak dekat maupun menengah.",
+    "active_skill": "Triple Blaster - Melontarkan tiga granat fragmentasi yang dapat diarahkan.",
+    "passive_skill": "Slide Master - Dapat menembak selagi melakukan sliding (meluncur) di tanah."
+  },
+  "luna": {
+    "name": "Luna",
+    "role": "Recon",
+    "description": "Ahli pemanah mematikan dan pencari jejak ulung dalam medan tempur.",
+    "active_skill": "Recon Arrow - Menembakkan panah sensor yang mengungkap lokasi musuh menembus tembok.",
+    "passive_skill": "Hunter's Instinct - Otomatis mendeteksi jejak kaki musuh dalam jarak dekat dari HUD."
+  },
+  "stinger": {
+    "name": "Stinger",
+    "role": "Medic",
+    "description": "Pakar medis lapangan bersenjatakan teknologi penyembuh canggih dari kejauhan.",
+    "active_skill": "Healing Drone - Menerbangkan drone cerdas terbang yang menyembuhkan HP teman.",
+    "passive_skill": "Quick Revive - Dapat menyuntikan adrenalin (revive) ke teman jauh lebih cepat."
+  },
+  "shepherd": {
+    "name": "Shepherd",
+    "role": "Engineer",
+    "description": "Karakter defensif yang ahli mengubah ritme pertarungan menggunakan teknologi sonik.",
+    "active_skill": "Sonic Trap - Menaruh ranjau suara yang melumpuhkan gerakan (stun) pendengaran musuh.",
+    "passive_skill": "Hardened Armor - Start dengan buff pelindung badan dan resistance ledakan ekstra."
+  },
+  "vyron": {
+    "name": "Vyron",
+    "role": "Assault",
+    "description": "Mantan anggota pasukan penerobos paksa (Breacher).",
+    "active_skill": "Airburst Launcher - Pelontar peledak di tangan robotnya yang sangat lincah.",
+    "passive_skill": "Dynamic Propulsion - Daya loncat dan gerak sangat agresif."
+  },
+  "hackclaw": {
+    "name": "Hackclaw",
+    "role": "Recon",
+    "description": "Hacker tingkat tinggi yang mengambil alih aliran informasi dalam perang.",
+    "active_skill": "Signal Jammer - Membutakan radar musuh, map musuh, dan me-retes berbagai gadget musuh.",
+    "passive_skill": "Silent Step - Jejak langkahnya nyaris tidak menghasilkan desibel suara apapun."
+  },
+  "uluru": {
+    "name": "Uluru",
+    "role": "Engineer",
+    "description": "Tangk baja hidup yang dirancang khusus untuk menjadi tameng utama saat pertempuran terbuka.",
+    "active_skill": "Deployable Cover - Melemparkan bunker besi portabel yang 100% tahan tembakan peluru.",
+    "passive_skill": "Sentry Expert - Efisiensi penggunaan Turret dan alat-alat kendaraan."
+  }
+}

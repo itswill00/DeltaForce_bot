@@ -1,0 +1,52 @@
+[
+  {
+    "question": "Siapa nama operator Delta Force spesialis Recon yang menggunakan alat sensor panah?",
+    "options": ["Luna", "D-Wolf", "Hackclaw", "Stinger"],
+    "answer": 0
+  },
+  {
+    "question": "Attachment pembantu apa yang sangat disarankan (krusial) dipasang ke SMG Vector karena fire ratenya terlalu beringas?",
+    "options": ["Holographic Sight", "Extended Mag", "Suppressor", "Bipod"],
+    "answer": 1
+  },
+  {
+    "question": "Role Operator apa yang tugas utamanya mendaratkan Healing Drone (Drone Penyembuh)?",
+    "options": ["Assault", "Engineer", "Medic", "Recon"],
+    "answer": 2
+  },
+  {
+    "question": "Senjata M249 masuk ke dalam kategori laras panjang apa di Game Delta Force?",
+    "options": ["Assault Rifle", "Sniper Rifle", "LMG", "SMG"],
+    "answer": 2
+  },
+  {
+    "question": "Operator (karakter) mana yang sanggup meretas/menyamarkan sinyal musuh melalui kemampuannya?",
+    "options": ["Hackclaw", "Vyron", "Uluru", "Luna"],
+    "answer": 0
+  },
+  {
+    "question": "Siapa operator berkelas Engineer yang memiliki kemampuan menggelar perisai perlindungan baja portabel (Deployable Cover)?",
+    "options": ["Shepherd", "Uluru", "Stinger", "Vyron"],
+    "answer": 1
+  },
+  {
+    "question": "Apa nama spesialisasi D-Wolf dalam pertempuran Delta Force?",
+    "options": ["Recon", "Medic", "Engineer", "Assault"],
+    "answer": 3
+  },
+  {
+    "question": "Senjata apa yang diakui memiliki built-in suppressor (peredam bawaan pabrik) dalam Delta Force?",
+    "options": ["M416", "AS VAL", "SCAR-H", "P90"],
+    "answer": 1
+  },
+  {
+    "question": "Dalam mode Havoc Warfare, jika tim kita merebut point objektif, kendaraan apa yang biasanya otomatis bisa di - deploy?",
+    "options": ["Pesawat Komersil", "Tank / Helikopter", "Sepeda", "Kapal Induk"],
+    "answer": 1
+  },
+  {
+    "question": "Siapakah publisher game resmi Delta Force: Hawk Ops versi Global secara umum?",
+    "options": ["EA Games", "Tencent/Level Infinite", "Activision", "Ubisoft"],
+    "answer": 1
+  }
+]
