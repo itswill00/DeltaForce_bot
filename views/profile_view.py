@@ -1,32 +1,29 @@
-from utils.style_utils import get_header, get_footer, format_field, progress_bar, get_divider
-import math
+from utils.style_utils import get_header, get_footer, format_field, progress_bar
 
 def render_profile(user_dto, badges=None):
-    """Renders a clean and mature operator profile card."""
+    """Compact minimalist profile card."""
     current_lvl_xp = (user_dto.level - 1)**2 * 25
     next_lvl_xp = user_dto.level**2 * 25
     xp_in_level = user_dto.xp - current_lvl_xp
     xp_required = next_lvl_xp - current_lvl_xp
     
     xp_bar = progress_bar(xp_in_level, xp_required)
-    badge_text = ", ".join(badges) if badges else "Belum ada badge"
+    badge_text = ", ".join(badges) if badges else "Kosong"
     
     text = get_header("Profil Personel", "👤")
-    text += f"Callsign: <b>{user_dto.ign}</b>\n"
-    text += f"Role: <code>{user_dto.role or 'Belum dipilih'}</code>\n"
-    text += get_divider()
     
-    text += f"🎖 <b>Level: {user_dto.level}</b>\n"
-    text += f"Progres XP: {xp_bar}\n"
-    text += f"<i>({user_dto.xp} XP terakumulasi)</i>\n"
-    text += get_divider()
+    text += format_field("CALLSIGN", user_dto.ign)
+    text += format_field("SPECIALIST", user_dto.role or "N/A")
+    text += "\n"
     
-    text += f"⭐ Reputasi: <b>{user_dto.rep_points}</b>\n"
-    text += f"💰 Saldo: <b>{user_dto.balance} Koin</b>\n"
-    text += f"⚔️ Total Mabar: <b>{user_dto.mabar_score} Sesi</b>\n"
-    text += get_divider()
+    text += f"<b>LEVEL {user_dto.level}</b>\n"
+    text += f"{xp_bar} <code>({user_dto.xp} XP)</code>\n\n"
     
-    text += f"🏅 <b>Badges:</b>\n<i>{badge_text}</i>\n"
-    text += get_footer()
+    text += format_field("REPUTASI", f"⭐ {user_dto.rep_points}")
+    text += format_field("SALDO", f"💰 {user_dto.balance}")
+    text += format_field("MABAR", f"{user_dto.mabar_score} Sesi")
+    text += "\n"
+    
+    text += f"<b>BADGES</b>: <i>{badge_text}</i>"
     
     return text

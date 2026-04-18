@@ -1,25 +1,17 @@
-from utils.style_utils import get_header, get_footer, format_field, get_divider
+from utils.style_utils import get_header, format_field
 
 def render_operator_list():
-    """Renders the operator database main screen."""
-    text = get_header("OPERATOR DATABASE", "🚑")
-    text += "Accessing TiMi-Global Dossiers...\n"
-    text += "Select specialist for tactical capability assessment:"
-    text += "\n" + get_footer("Dossier v1.0")
-    return text
+    """Compact operator database list."""
+    return get_header("Database Operator", "🚑") + "Pilih personel untuk melihat profil taktis:"
 
 def render_operator_detail(op):
-    """Renders detailed operator tactical dossier."""
-    text = get_header(f"DOSSIER: {op.get('name', 'N/A').upper()}", "👤")
+    """Compact operator dossier."""
+    text = get_header(f"Operator: {op.get('name', 'N/A')}", "👤")
     
-    text += format_field("SPECIALIST", op.get("role", "N/A"), "🎯")
-    text += get_divider()
-    text += f"<i>\"{op.get('description', 'No description available.')}\"</i>\n\n"
+    text += format_field("SPECIALIST", op.get("role", "N/A"))
+    text += f"\n<i>\"{op.get('description', 'N/A')}\"</i>\n\n"
     
-    text += "🛠️ <b>TACTICAL ABILITIES:</b>\n"
-    text += f"• <b>ACTIVE :</b> <code>{op.get('active_skill', 'N/A')}</code>\n"
-    text += f"• <b>PASSIVE:</b> <code>{op.get('passive_skill', 'N/A')}</code>\n"
+    text += f"<b>Skill Aktif</b>: <code>{op.get('active_skill', 'N/A')}</code>\n"
+    text += f"<b>Skill Pasif</b>: <code>{op.get('passive_skill', 'N/A')}</code>"
     
-    text += get_divider()
-    text += get_footer("Access level: CLASSIFIED")
     return text
