@@ -12,17 +12,16 @@ import random
 from datetime import datetime
 
 router = Router()
-
 def get_dashboard_kb(user_id: int, is_registered: bool = False, page: int = 1):
     builder = InlineKeyboardBuilder()
+
+    # Priority: COMMAND CENTER for Owner
+    if int(user_id) == int(settings.owner_id):
+        builder.button(text="◈ COMMAND CENTER", callback_data="admin_dashboard")
+
     if not is_registered:
         builder.button(text="◈ DAFTAR SEKARANG", callback_data="start_register")
         builder.button(text="◇ PANDUAN PENGGUNAAN", callback_data="main_help")
-        
-        # Invisible Command Center for Owner (Unregistered)
-        if int(user_id) == int(settings.owner_id):
-            builder.button(text="◈ COMMAND CENTER", callback_data="admin_dashboard")
-            
         builder.adjust(1)
     else:
         if page == 1:
@@ -31,13 +30,12 @@ def get_dashboard_kb(user_id: int, is_registered: bool = False, page: int = 1):
             builder.button(text="⬡ DATA INTEL", callback_data="main_intel")
             builder.button(text="⬢ LOADOUTS", callback_data="main_meta")
             builder.button(text="▹ MENU LAIN", callback_data="main_page_2")
-            
-            # Invisible Command Center for Owner (Registered, Page 1)
-            if int(user_id) == int(settings.owner_id):
-                builder.button(text="◈ COMMAND CENTER", callback_data="admin_dashboard")
-                
-            builder.adjust(2, 2, 1)
+
+            # If owner, 1 (CC) + 5 = 6 buttons. adjust(1, 2, 2, 1) or similar.
+            # We'll use adjust(1) then follow standard to be safe.
+            builder.adjust(1, 2, 2, 1)
         else:
+...
             builder.button(text="◈ PERINGKAT", callback_data="main_leaderboard")
             builder.button(text="⌬ BURSA ITEM", callback_data="main_shop")
             builder.button(text="🧠 TRIVIA", callback_data="main_trivia")
@@ -88,6 +86,20 @@ async def process_close_msg(callback: types.CallbackQuery):
     except Exception:
         await callback.answer("Pesan terlalu lama untuk dihapus.", show_alert=True)
     await callback.answer()
+
+@router.message(Command("checkid"))
+async def cmd_checkid(message: types.Message):
+    """Temporary debug command to identify ID mismatch."""
+    user_id = message.from_user.id
+    config_owner = settings.owner_id
+    
+    text = (
+        f"◈ <b>DEBUG ID AUDIT</b>\n"
+        f"⬢ ID Kamu: <code>{user_id}</code>\n"
+        f"⬢ ID Owner di Bot: <code>{config_owner}</code>\n\n"
+        f"<i>Jika kedua angka di atas berbeda, artinya OWNER_ID di .env belum tepat atau belum terbaca.</i>"
+    )
+    await message.answer(text)
 
 @router.message(CommandStart())
 @router.message(Command("menu", "dashboard"))
