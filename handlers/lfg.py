@@ -3,26 +3,37 @@ from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from services.user_service import UserService
 from services.lfg_service import LfgService
+from services.system_service import SystemService
 from config import settings
 from utils.style_utils import get_header, get_footer
 from utils.auto_delete import set_auto_delete
 from views.lfg_view import render_lfg
 import asyncio
+import logging
 
 router = Router()
 
+async def safe_answer_photo(event: types.Message | types.CallbackQuery, photo: str, caption: str, reply_markup):
+    """Fallback photo handler for LFG."""
+    message = event if isinstance(event, types.Message) else event.message
+    try:
+        await message.answer_photo(photo=photo, caption=caption, reply_markup=reply_markup)
+    except Exception as e:
+        logging.warning(f"Media failed in LFG: {e}")
+        await message.answer(text=caption, reply_markup=reply_markup)
+
 @router.message(Command("mabar"))
 @router.callback_query(F.data == "main_mabar")
-async def cmd_mabar(event: types.Message | types.CallbackQuery, user_service: UserService):
+async def cmd_mabar(event: types.Message | types.CallbackQuery, user_service: UserService, system_service: SystemService):
     is_cb = isinstance(event, types.CallbackQuery)
-    message = event.message if is_cb else event
+    banner = await system_service.get_banner("lfg")
     
     user_info = await user_service.get_user(event.from_user.id)
     if not user_info or not user_info.ign:
         text = "❌ <b>AKSES DITOLAK:</b> Kamu harus <code>/register</code> profil sebelum mabar."
         builder = InlineKeyboardBuilder().button(text="◈ DAFTAR SEKARANG", callback_data="start_register")
-        if is_cb: await event.message.edit_caption(caption=text, reply_markup=builder.as_markup())
-        else: await event.answer_photo(photo=settings.banner_lfg, caption=text, reply_markup=builder.as_markup())
+        if is_cb and event.message.photo: await event.message.edit_caption(caption=text, reply_markup=builder.as_markup())
+        else: await safe_answer_photo(event, banner, text, builder.as_markup())
         return
 
     builder = InlineKeyboardBuilder()
@@ -32,14 +43,15 @@ async def cmd_mabar(event: types.Message | types.CallbackQuery, user_service: Us
     builder.adjust(1)
     
     text = get_header("PENGATURAN MABAR", "🕹️") + "Pilih mode operasi skuad Anda:"
-    if is_cb: await event.message.edit_caption(caption=text, reply_markup=builder.as_markup())
-    else: await event.answer_photo(photo=settings.banner_lfg, caption=text, reply_markup=builder.as_markup())
+    if is_cb and event.message.photo: await event.message.edit_caption(caption=text, reply_markup=builder.as_markup())
+    else: await safe_answer_photo(event, banner, text, builder.as_markup())
 
 @router.callback_query(F.data.startswith("lfghost_"))
-async def process_lfg_host(callback: types.CallbackQuery, user_service: UserService, lfg_service: LfgService):
+async def process_lfg_host(callback: types.CallbackQuery, user_service: UserService, lfg_service: LfgService, system_service: SystemService):
     lfg_type = callback.data.split("_")[1]
     user_info = await user_service.get_user(callback.from_user.id)
     host_name = user_info.ign if user_info else callback.from_user.first_name
+    banner = await system_service.get_banner("lfg")
     
     max_p = 3 if lfg_type == "hazard" else 4
     session = await lfg_service.create_session(callback.from_user.id, host_name, lfg_type, max_p)
@@ -51,7 +63,7 @@ async def process_lfg_host(callback: types.CallbackQuery, user_service: UserServ
     try: await callback.message.delete()
     except: pass
     
-    lfg_msg = await callback.message.answer_photo(photo=settings.banner_lfg, caption=text, reply_markup=markup)
+    lfg_msg = await callback.message.answer_photo(photo=banner, caption=text, reply_markup=markup)
     await callback.answer("Sektor dibuka.")
     if callback.message.chat.type != "private":
         asyncio.create_task(set_auto_delete(lfg_msg, None, 600))
@@ -82,22 +94,22 @@ async def process_lfg_action(callback: types.CallbackQuery, user_service: UserSe
             await callback.answer(f"⚠️ {msg}", show_alert=True)
             return
         text, markup = await build_lfg_interface(session, user_service, callback.bot)
-        await callback.message.edit_caption(caption=text, reply_markup=markup)
+        if callback.message.photo: await callback.message.edit_caption(caption=text, reply_markup=markup)
+        else: await callback.message.edit_text(text=text, reply_markup=markup)
         await callback.answer(msg)
-        if session.status == "closed":
-            conf = await callback.message.answer(f"✅ <b>SKUAD SIAP: {session.host_name}</b>\nBonus XP & Mabar diberikan.")
-            if callback.message.chat.type != "private": asyncio.create_task(set_auto_delete(conf, None, 60))
-                
+        
     elif action == "leave":
         session, msg = await lfg_service.leave_session(session_id, callback.from_user.id)
         if not session:
             await callback.answer(f"⚠️ {msg}", show_alert=True)
             return
         if session.status == "closed" and callback.from_user.id == session.host_id:
-            await callback.message.edit_caption(caption="<b>LOBAL DIBATALKAN</b>\nHost telah membatalkan sesi.")
+            if callback.message.photo: await callback.message.edit_caption(caption="<b>LOBI DIBATALKAN</b>\nHost telah membatalkan sesi.")
+            else: await callback.message.edit_text("<b>LOBI DIBATALKAN</b>\nHost telah membatalkan sesi.")
         else:
             text, markup = await build_lfg_interface(session, user_service, callback.bot)
-            await callback.message.edit_caption(caption=text, reply_markup=markup)
+            if callback.message.photo: await callback.message.edit_caption(caption=text, reply_markup=markup)
+            else: await callback.message.edit_text(text=text, reply_markup=markup)
         await callback.answer(msg)
 
     elif action == "ping":

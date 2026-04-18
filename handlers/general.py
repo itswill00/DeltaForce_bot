@@ -9,6 +9,7 @@ from utils.style_utils import get_header, get_footer, force_height
 from views.dashboard_view import render_dashboard
 import asyncio
 import random
+import logging
 from datetime import datetime
 
 router = Router()
@@ -54,6 +55,14 @@ def get_group_command_kb(bot_username: str):
     builder.adjust(2)
     return builder.as_markup()
 
+async def safe_answer_photo(message: types.Message, photo: str, caption: str, reply_markup):
+    """Answers with photo, falls back to text if photo fails."""
+    try:
+        await message.answer_photo(photo=photo, caption=caption, reply_markup=reply_markup)
+    except Exception as e:
+        logging.warning(f"Photo delivery failed, falling back to text: {e}")
+        await message.answer(text=caption, reply_markup=reply_markup)
+
 @router.message(Command("help"))
 async def cmd_help(message: types.Message, system_service: SystemService):
     if message.chat.type != "private": return
@@ -75,7 +84,7 @@ async def cmd_help(message: types.Message, system_service: SystemService):
     )
     builder = InlineKeyboardBuilder()
     builder.button(text="◃ MENU UTAMA", callback_data="main_menu")
-    await message.answer_photo(photo=banner, caption=text, reply_markup=builder.as_markup())
+    await safe_answer_photo(message, banner, text, builder.as_markup())
 
 @router.callback_query(F.data == "close_msg")
 async def process_close_msg(callback: types.CallbackQuery):
@@ -93,7 +102,7 @@ async def cmd_start(message: types.Message, user_service: UserService, system_se
     if message.chat.type in ["group", "supergroup"]:
         text = get_header("Hub Taktis Aktif", "◈")
         text += f"Selamat datang di Hub Komunitas <b>{message.chat.title}</b>.\n\nGunakan perintah di bawah untuk memulai koordinasi skuad:"
-        await message.answer_photo(photo=banner, caption=text, reply_markup=get_group_command_kb(bot_user.username))
+        await safe_answer_photo(message, banner, text, get_group_command_kb(bot_user.username))
         return
         
     user_data = await user_service.get_user(user_id)
@@ -115,7 +124,7 @@ async def cmd_start(message: types.Message, user_service: UserService, system_se
             return
 
     text = render_dashboard(user_data, is_reg, page=1)
-    await message.answer_photo(photo=banner, caption=text, reply_markup=get_dashboard_kb(user_id=user_id, is_registered=is_reg))
+    await safe_answer_photo(message, banner, text, get_dashboard_kb(user_id=user_id, is_registered=is_reg))
 
 @router.callback_query(F.data == "main_menu")
 @router.callback_query(F.data == "main_page_1")
@@ -125,11 +134,12 @@ async def process_main_menu(callback: types.CallbackQuery, user_service: UserSer
     text = render_dashboard(user_data, is_reg, page=1)
     
     if callback.message.photo:
-        await callback.message.edit_caption(caption=text, reply_markup=get_dashboard_kb(user_id=callback.from_user.id, is_registered=is_reg, page=1))
+        try:
+            await callback.message.edit_caption(caption=text, reply_markup=get_dashboard_kb(user_id=callback.from_user.id, is_registered=is_reg, page=1))
+        except Exception:
+            await callback.message.answer(text, reply_markup=get_dashboard_kb(user_id=callback.from_user.id, is_registered=is_reg, page=1))
     else:
-        banner = await system_service.get_banner("main")
-        await callback.message.answer_photo(photo=banner, caption=text, reply_markup=get_dashboard_kb(user_id=callback.from_user.id, is_registered=is_reg, page=1))
-        await callback.message.delete()
+        await callback.message.edit_text(text, reply_markup=get_dashboard_kb(user_id=callback.from_user.id, is_registered=is_reg, page=1))
     await callback.answer()
 
 @router.callback_query(F.data == "main_page_2")
@@ -153,7 +163,7 @@ async def cmd_group_menu(message: types.Message, system_service: SystemService):
     bot_user = await message.bot.get_me()
     banner = await system_service.get_banner("main")
     text = get_header("Menu Grup", "▣") + "Pilih aksi cepat untuk grup ini:"
-    await message.answer_photo(photo=banner, caption=text, reply_markup=get_group_command_kb(bot_user.username))
+    await safe_answer_photo(message, banner, text, get_group_command_kb(bot_user.username))
 
 @router.callback_query(F.data == "main_help")
 async def process_main_help(callback: types.CallbackQuery):
@@ -174,5 +184,9 @@ async def process_main_help(callback: types.CallbackQuery):
         "<i>Gunakan tombol di bawah untuk kembali.</i>"
     )
     builder = InlineKeyboardBuilder().button(text="◃ KEMBALI", callback_data="main_menu")
-    await callback.message.edit_caption(caption=force_height(text, 10), reply_markup=builder.as_markup())
+    
+    if callback.message.photo:
+        await callback.message.edit_caption(caption=force_height(text, 10), reply_markup=builder.as_markup())
+    else:
+        await callback.message.edit_text(text=force_height(text, 10), reply_markup=builder.as_markup())
     await callback.answer()
