@@ -171,13 +171,30 @@ async def cmd_refresh(message: types.Message):
     if not is_owner(message.from_user.id): return
     status_msg = await message.answer("◈ <b>Memulai Prosedur Update...</b>\n\n⬢ Menarik kode dari GitHub...")
     try:
-        process = await asyncio.create_subprocess_shell("git pull origin main", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-        stdout, stderr = await process.communicate()
+        # Combine stdout and stderr for full visibility
+        process = await asyncio.create_subprocess_shell(
+            "git pull origin main", 
+            stdout=asyncio.subprocess.PIPE, 
+            stderr=asyncio.subprocess.STDOUT
+        )
+        stdout, _ = await process.communicate()
         output = stdout.decode().strip()
-        if "Already up to date" in output:
-            await status_msg.edit_text(get_header("Update Dibatalkan", "◈") + "Sistem sudah menggunakan versi terbaru di GitHub.\n\n" + f"<code>{output}</code>")
+
+        if "Already up to date" in output or not output:
+            await status_msg.edit_text(
+                get_header("Sistem Terkini", "◈") + 
+                "Tidak ada pembaruan baru di GitHub.\n\n" + 
+                f"<pre>{output or 'Status: Up to date'}</pre>"
+            )
             return
-        await status_msg.edit_text(get_header("Update Berhasil", "✅") + "Kode terbaru berhasil ditarik.\n\n" + f"<code>{output}</code>\n\n" + "<b>Sistem akan segera restart...</b>")
+
+        await status_msg.edit_text(
+            get_header("Update Berhasil", "✅") + 
+            "<b>Log Pembaruan:</b>\n" + 
+            f"<pre>{output[:1000]}</pre>\n" + 
+            "<b>Sistem akan segera restart...</b>"
+        )
+        
         await send_log(message.bot, "ADMIN_ACTION", f"Owner memicu /refresh. Sistem melakukan pull dan restart.")
         await asyncio.sleep(2)
         os.execv(sys.executable, [sys.executable, sys.argv[0], "--restart", str(message.chat.id), str(status_msg.message_id)])

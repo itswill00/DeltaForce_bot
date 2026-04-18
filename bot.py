@@ -27,23 +27,33 @@ from middlewares.event_logger import EventLoggerMiddleware
 from middlewares.throttling import ThrottlingMiddleware
 
 async def notify_restart_success():
-    """Checks for restart arguments and notifies the owner."""
+    """Checks for restart arguments and notifies the owner with git details."""
     if "--restart" in sys.argv:
         try:
             idx = sys.argv.index("--restart")
             chat_id = int(sys.argv[idx + 1])
             msg_id = int(sys.argv[idx + 2])
             
+            # Fetch latest commit info
+            process = await asyncio.create_subprocess_shell(
+                "git log -1 --pretty=format:'%h - %s (%cr)'",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, _ = await process.communicate()
+            commit_info = stdout.decode().strip() or "Unknown Version"
+            
             from utils.style_utils import get_header
             text = get_header("Sistem Online", "✅")
-            text += "Unit telah berhasil diperbarui dan kembali operasional."
+            text += "Unit telah berhasil diperbarui dan kembali operasional.\n\n"
+            text += f"◈ <b>Versi Saat Ini:</b>\n<code>{commit_info}</code>"
             
             await bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=msg_id,
                 text=text
             )
-            logging.info(f"Restart notification sent to chat {chat_id}")
+            logging.info(f"Restart success notification sent with info: {commit_info}")
         except Exception as e:
             logging.error(f"Failed to send restart notification: {e}")
 
