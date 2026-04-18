@@ -3,49 +3,60 @@ import os
 import asyncio
 import aiofiles
 import logging
+from config import settings
 
-class AsyncJSONManager:
-    """A wrapper for concurrent-safe JSON read/write operations using in-memory cache and atomic file writes."""
+class DeltaJSONDB:
+    """Enterprise-grade JSON persistence with atomic replacement and in-memory caching."""
     
-    def __init__(self, file_path: str, default_data=None):
+    def __init__(self, file_path: str):
         self.file_path = file_path
         self.lock = asyncio.Lock()
-        self.default_data = default_data if default_data is not None else {}
-        self._cache = None
-        self._ensure_file_exists()
+        self._cache = {
+            "users": {},
+            "groups": {},
+            "lfg": {}
+        }
+        self._load_from_disk()
 
-    def _ensure_file_exists(self):
-        """Ensure the JSON file exists, create with default data if not, and load to cache."""
-        dir_name = os.path.dirname(self.file_path)
-        if dir_name and not os.path.exists(dir_name):
-            os.makedirs(dir_name)
-        
+    def _load_from_disk(self):
+        """Initial load from file on startup."""
         if not os.path.exists(self.file_path):
             with open(self.file_path, 'w', encoding='utf-8') as f:
-                json.dump(self.default_data, f, indent=4)
-                
+                json.dump(self._cache, f, indent=4)
+            return
+
         try:
             with open(self.file_path, 'r', encoding='utf-8') as f:
-                self._cache = json.load(f)
+                data = json.load(f)
+                # Ensure structure matches
+                for key in self._cache:
+                    if key not in data:
+                        data[key] = {}
+                self._cache = data
         except (json.JSONDecodeError, FileNotFoundError):
-            self._cache = self.default_data.copy()
+            logging.error(f"Corruption detected in {self.file_path}. Initializing empty DB.")
 
-    async def read(self):
-        """Read data from in-memory cache (O(1) complexity, Extremely Fast)."""
+    async def get_all(self):
+        """Read state from memory (O(1))."""
         async with self.lock:
             return self._cache
 
-    async def write(self, data):
-        """Update cache and write to disk safely using Atomic Replacement."""
+    async def save(self, data: dict):
+        """Update cache and write to disk atomically."""
         async with self.lock:
             self._cache = data
             temp_file = self.file_path + ".tmp"
             try:
+                # Write to temp file first
                 async with aiofiles.open(temp_file, 'w', encoding='utf-8') as f:
                     await f.write(json.dumps(data, indent=4, ensure_ascii=False))
-                # Atomic replace ensures if bot crashes during write, original file is safe
+                
+                # Atomic replace: original file is only replaced if write succeeds
                 os.replace(temp_file, self.file_path)
             except Exception as e:
-                logging.error(f"Failed to write JSON {self.file_path}: {e}")
+                logging.error(f"JSON Write Failure: {e}")
                 if os.path.exists(temp_file):
                     os.remove(temp_file)
+
+# Global Instance
+db_manager = DeltaJSONDB(settings.local_db_path)

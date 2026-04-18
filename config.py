@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     bot_token: str = "YOUR_TELEGRAM_BOT_TOKEN_HERE"
-    database_url: str = "sqlite+aiosqlite:///deltaforce.db"
+    local_db_path: str = "localdb.json"
     owner_id: int = 0
     admin_ids: Any = []
     log_group_id: int = 0

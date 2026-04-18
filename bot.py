@@ -6,7 +6,7 @@ from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 from config import settings
 
-# Structured Logging for Enterprise Clarity
+# Structured Logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - [%(levelname)s] - %(name)s - %(message)s",
@@ -19,28 +19,18 @@ logging.basicConfig(
 bot = Bot(token=settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
 
-# Import Database and Services initialization
-from database.db_session import init_db
+# Middlewares
 from middlewares.db_session import DbSessionMiddleware
 from middlewares.registration import RegistrationMiddleware
 
-# Import routers from handlers
-from handlers.general import router as general_router
-from handlers.profile import router as profile_router
-from handlers.lfg import router as lfg_router
-# ... other routers can be imported as needed, focusing on core for now
-
 async def main():
-    # 1. Initialize Database
-    await init_db()
-    
-    # 2. Setup Middlewares (Order is important: DB session first)
+    # 1. Setup Middlewares
+    # We keep the same middleware names to avoid breaking the router structure
     dp.update.outer_middleware(DbSessionMiddleware())
     dp.message.middleware(RegistrationMiddleware())
     dp.callback_query.middleware(RegistrationMiddleware())
     
-    # 3. Include Routers
-    # In a real enterprise app, we'd use a better way to collect routers
+    # 2. Include Routers
     from handlers import general, profile, lfg, meta, leaderboard, admin, owner, operator, shop, inline, group_settings, intel, trivia
     
     dp.include_router(general.router)
@@ -57,7 +47,7 @@ async def main():
     dp.include_router(admin.router)
     dp.include_router(owner.router)
 
-    logging.info("Delta Force Community Bot starting in Enterprise Mode...")
+    logging.info(f"Delta Force Bot starting with JSON Persistence ({settings.local_db_path})...")
     
     from utils.scheduler import lfg_garbage_collector, auto_intel_scheduler
     from utils.news_updater import auto_news_fetcher
@@ -73,10 +63,10 @@ async def main():
 if __name__ == "__main__":
     try:
         if settings.bot_token == "YOUR_TELEGRAM_BOT_TOKEN_HERE":
-            logging.error("CRITICAL: Bot token not configured. Please set it in .env or config.yaml")
+            logging.error("CRITICAL: Bot token not configured.")
         else:
             asyncio.run(main())
     except KeyboardInterrupt:
-        logging.info("Bot execution interrupted by user.")
+        logging.info("Bot stopped.")
     except Exception as e:
         logging.critical(f"Bot crashed: {e}", exc_info=True)

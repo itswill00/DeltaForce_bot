@@ -1,88 +1,82 @@
-from sqlalchemy import select, update, desc
-from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import User
+from database.json_manager import DeltaJSONDB, db_manager
 import math
 from datetime import datetime
 
-class UserService:
-    def __init__(self, session: AsyncSession):
-        self.session = session
+class UserDTO:
+    """A data object to simulate SQLAlchemy-like objects for the JSON layer."""
+    def __init__(self, user_id: int, data: dict):
+        self.id = user_id
+        self.ign = data.get("ign")
+        self.role = data.get("role")
+        self.level = data.get("level", 1)
+        self.xp = data.get("xp", 0)
+        self.rep_points = data.get("rep_points", 0)
+        self.mabar_score = data.get("mabar_score", 0)
+        self.balance = data.get("balance", 0)
+        self.last_login = data.get("last_login")
+        self.is_admin = data.get("is_admin", False)
+        self.owned_items = data.get("owned_items", [])
 
-    async def get_user(self, user_id: int) -> User:
-        """Retrieve user from DB or return None."""
-        result = await self.session.execute(select(User).where(User.id == user_id))
-        return result.scalar_one_or_none()
+class UserService:
+    def __init__(self, db: DeltaJSONDB = db_manager):
+        self.db = db
+
+    async def get_user(self, user_id: int) -> UserDTO:
+        data = await self.db.get_all()
+        user_data = data["users"].get(str(user_id))
+        return UserDTO(user_id, user_data) if user_data else None
 
     async def register_user(self, user_id: int, ign: str, role: str, first_name: str, username: str):
-        """Register a new user or update existing details."""
-        user = await self.get_user(user_id)
-        if not user:
-            user = User(
-                id=user_id,
-                ign=ign,
-                role=role,
-                first_name=first_name,
-                username=username,
-                owned_items=[]
-            )
-            self.session.add(user)
-        else:
-            user.ign = ign
-            user.role = role
-            user.first_name = first_name
-            user.username = username
+        data = await self.db.get_all()
+        uid = str(user_id)
+        if uid not in data["users"]:
+            data["users"][uid] = {
+                "level": 1, "xp": 0, "rep_points": 0, "mabar_score": 0,
+                "balance": 0, "owned_items": [], "is_admin": False
+            }
         
-        await self.session.commit()
-        return user
+        data["users"][uid].update({
+            "ign": ign,
+            "role": role,
+            "first_name": first_name,
+            "username": username
+        })
+        await self.db.save(data)
+        return UserDTO(user_id, data["users"][uid])
 
     async def add_xp(self, user_id: int, amount: int):
-        """Add XP and automatically calculate level-up."""
-        user = await self.get_user(user_id)
-        if not user: return
+        data = await self.db.get_all()
+        uid = str(user_id)
+        if uid not in data["users"]: return
         
-        user.xp += amount
+        user = data["users"][uid]
+        user["xp"] = user.get("xp", 0) + amount
         
-        # Enterprise Leveling Formula: L = sqrt(XP/25) + 1
-        new_level = int(math.sqrt(user.xp / 25)) + 1
-        if new_level > user.level:
-            user.level = new_level
-            # Potential for level-up notifications here
-            
-        await self.session.commit()
-        return user
+        # Enterprise Formula
+        new_level = int(math.sqrt(user["xp"] / 25)) + 1
+        user["level"] = new_level
+        
+        await self.db.save(data)
 
     async def add_rep(self, user_id: int, amount: int = 1):
-        user = await self.get_user(user_id)
-        if user:
-            user.rep_points += amount
-            await self.session.commit()
-
-    async def add_balance(self, user_id: int, amount: int):
-        user = await self.get_user(user_id)
-        if user:
-            user.balance += amount
-            await self.session.commit()
+        data = await self.db.get_all()
+        uid = str(user_id)
+        if uid in data["users"]:
+            data["users"][uid]["rep_points"] = data["users"][uid].get("rep_points", 0) + amount
+            await self.db.save(data)
 
     async def get_top_players(self, limit: int = 10, category: str = "mabar_score"):
-        """Get leaderboard with optimized DB sorting."""
-        column = getattr(User, category, User.mabar_score)
-        query = select(User).order_by(desc(column)).limit(limit)
-        result = await self.session.execute(query)
-        return result.scalars().all()
+        data = await self.db.get_all()
+        sorted_users = sorted(
+            [UserDTO(int(uid), u) for uid, u in data["users"].items() if category in u],
+            key=lambda x: getattr(x, category, 0),
+            reverse=True
+        )
+        return sorted_users[:limit]
 
     async def update_last_login(self, user_id: int):
-        user = await self.get_user(user_id)
-        if user:
-            user.last_login = datetime.now().date().isoformat()
-            await self.session.commit()
-
-    async def set_admin_status(self, user_id: int, is_admin: bool):
-        user = await self.get_user(user_id)
-        if user:
-            user.is_admin = is_admin
-            await self.session.commit()
-        elif is_admin:
-            # Create dummy user if admin needs to be set before registration
-            user = User(id=user_id, is_admin=True)
-            self.session.add(user)
-            await self.session.commit()
+        data = await self.db.get_all()
+        uid = str(user_id)
+        if uid in data["users"]:
+            data["users"][uid]["last_login"] = datetime.now().date().isoformat()
+            await self.db.save(data)
