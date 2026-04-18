@@ -14,7 +14,12 @@ class DeltaJSONDB:
         self._cache = {
             "users": {},
             "groups": {},
-            "lfg": {}
+            "lfg": {},
+            "system": {
+                "maintenance": False,
+                "event_multiplier": 1.0,
+                "total_broadcasts": 0
+            }
         }
         self._load_from_disk()
 

@@ -5,6 +5,9 @@ from aiogram.types import Message, CallbackQuery, TelegramObject
 from services.user_service import UserService
 from utils.auto_delete import set_auto_delete
 
+from services.system_service import SystemService
+from config import settings
+
 # Core whitelisted commands
 ALLOWED_CMDS = {"/start", "/register", "/needhelp", "/sys", "/addadmin", "/deladmin", "/force_gc", "/menu", "/dashboard", "/refresh"}
 
@@ -19,6 +22,17 @@ class RegistrationMiddleware(BaseMiddleware):
         user = data.get("event_from_user")
         if not user or user.is_bot:
             return await handler(event, data)
+
+        # 1. Global Maintenance Check (Bypass for Owner)
+        if int(user.id) != int(settings.owner_id):
+            sys_service = SystemService()
+            sys_settings = await sys_service.get_settings()
+            if sys_settings.get("maintenance", False):
+                if isinstance(event, Message):
+                    await event.answer("◈ <b>MAINTENANCE MODE</b>\n\nSistem sedang dalam pemeliharaan teknis untuk peningkatan performa. Silakan coba beberapa saat lagi.")
+                elif isinstance(event, CallbackQuery):
+                    await event.answer("Sistem dalam pemeliharaan.", show_alert=True)
+                return
 
         is_msg = isinstance(event, Message)
         is_cb = isinstance(event, CallbackQuery)
