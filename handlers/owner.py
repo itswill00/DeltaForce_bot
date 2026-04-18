@@ -27,7 +27,8 @@ class AdminState(StatesGroup):
     waiting_for_mass_reward = State()
     waiting_for_blacklist_word = State()
     # Content CMS States
-    waiting_for_weapon_edit = State()
+    waiting_for_weapon_data = State() # JSON string or specific fields
+    waiting_for_map_data = State()
 
 def is_owner(user_id: int) -> bool:
     return int(user_id) == int(settings.owner_id)
@@ -106,6 +107,62 @@ async def admin_cms_maps(callback: types.CallbackQuery, content_service: Content
     
     await callback.message.edit_text(text, reply_markup=builder.as_markup())
     await callback.answer()
+
+@router.callback_query(F.data == "admin_wpn_add")
+async def admin_wpn_add_prompt(callback: types.CallbackQuery, state: FSMContext):
+    if not is_owner(callback.from_user.id): return
+    text = (
+        get_header("Input Arsenal Baru", "🔫") +
+        "Kirimkan data senjata dalam format JSON. Contoh:\n\n"
+        "<code>{ \"id\": \"m416\", \"name\": \"M416\", \"tier\": \"S\", \"category\": \"Assault\", \"best_loadout\": \"...\" }</code>"
+    )
+    builder = InlineKeyboardBuilder().button(text="◃ BATAL", callback_data="admin_cancel_state")
+    await callback.message.answer(text, reply_markup=builder.as_markup())
+    await state.set_state(AdminState.waiting_for_weapon_data)
+    await callback.answer()
+
+@router.message(AdminState.waiting_for_weapon_data, ~F.text.startswith("/"))
+async def process_admin_wpn_add(message: types.Message, state: FSMContext, content_service: ContentService):
+    if not is_owner(message.from_user.id): return
+    try:
+        import json
+        w = json.loads(message.text)
+        wid = w.pop("id", None)
+        if not wid or not w.get("name"): raise ValueError("ID dan Nama wajib ada.")
+        
+        await content_service.update_weapon(wid, w)
+        await message.answer(f"✅ Senjata <b>{w['name']}</b> berhasil ditambahkan ke database.")
+        await state.clear()
+    except Exception as e:
+        await message.answer(f"❌ <b>Format Salah:</b>\n<code>{str(e)}</code>")
+
+@router.callback_query(F.data == "admin_map_add")
+async def admin_map_add_prompt(callback: types.CallbackQuery, state: FSMContext):
+    if not is_owner(callback.from_user.id): return
+    text = (
+        get_header("Input Sektor Baru", "📍") +
+        "Kirimkan data peta dalam format JSON. Contoh:\n\n"
+        "<code>{ \"id\": \"dam\", \"name\": \"Dam\", \"description\": \"...\", \"hotspots\": [\"A\", \"B\"] }</code>"
+    )
+    builder = InlineKeyboardBuilder().button(text="◃ BATAL", callback_data="admin_cancel_state")
+    await callback.message.answer(text, reply_markup=builder.as_markup())
+    await state.set_state(AdminState.waiting_for_map_data)
+    await callback.answer()
+
+@router.message(AdminState.waiting_for_map_data, ~F.text.startswith("/"))
+async def process_admin_map_add(message: types.Message, state: FSMContext, content_service: ContentService):
+    if not is_owner(message.from_user.id): return
+    try:
+        import json
+        m = json.loads(message.text)
+        mid = m.pop("id", None)
+        if not mid or not m.get("name"): raise ValueError("ID dan Nama wajib ada.")
+        
+        await content_service.update_map(mid, m)
+        await message.answer(f"✅ Peta <b>{m['name']}</b> berhasil ditambahkan ke database.")
+        await state.clear()
+    except Exception as e:
+        await message.answer(f"❌ <b>Format Salah:</b>\n<code>{str(e)}</code>")
 
 @router.callback_query(F.data.startswith("admin_map_view_"))
 async def admin_map_view(callback: types.CallbackQuery, content_service: ContentService):
