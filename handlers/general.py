@@ -33,7 +33,6 @@ def get_dashboard_kb(user_id: int, is_registered: bool = False, page: int = 1):
             builder.button(text="⬢ LOADOUTS", callback_data="main_meta")
             builder.button(text="▹ MENU LAIN", callback_data="main_page_2")
             
-            # If owner, row 1 is CC. Others are 2, 2, 1.
             if is_owner:
                 builder.adjust(1, 2, 2, 1)
             else:
@@ -41,8 +40,8 @@ def get_dashboard_kb(user_id: int, is_registered: bool = False, page: int = 1):
         else:
             builder.button(text="◈ PERINGKAT", callback_data="main_leaderboard")
             builder.button(text="⌬ BURSA ITEM", callback_data="main_shop")
-            builder.button(text="🧠 TRIVIA", callback_data="main_trivia")
-            builder.button(text="🚑 OPERATOR", callback_data="main_operator")
+            builder.button(text="⌬ SIMULASI", callback_data="main_trivia")
+            builder.button(text="◇ OPERATOR", callback_data="main_operator")
             builder.button(text="◃ KEMBALI", callback_data="main_page_1")
             builder.adjust(2, 2, 1)
             
@@ -51,16 +50,16 @@ def get_dashboard_kb(user_id: int, is_registered: bool = False, page: int = 1):
 def get_group_command_kb(bot_username: str):
     builder = InlineKeyboardBuilder()
     builder.button(text="▣ CARI TIM MABAR", callback_data="main_mabar")
-    builder.button(text="🧠 KUIS TRIVIA", callback_data="main_trivia")
+    builder.button(text="⌬ KUIS TRIVIA", callback_data="main_trivia")
     builder.button(text="◈ CEK PERINGKAT", callback_data="main_leaderboard")
     builder.button(text="◇ PROFIL (DM)", url=f"https://t.me/{bot_username}?start=profile")
     builder.adjust(2)
     return builder.as_markup()
 
-@router.callback_query(F.data == "close_msg")
-
+@router.message(Command("help"))
 async def cmd_help(message: types.Message):
     if message.chat.type != "private": return
+
     text = get_header("Pusat Bantuan", "◇")
     text += (
         "Selamat datang di panduan navigasi Delta Force Hub. Berikut perintah yang tersedia:\n\n"
@@ -85,7 +84,7 @@ async def process_close_msg(callback: types.CallbackQuery):
     try:
         await callback.message.delete()
     except Exception:
-        await callback.answer("Pesan terlalu lama untuk dihapus.", show_alert=True)
+        await callback.answer("Pesan terlalu lama.", show_alert=True)
     await callback.answer()
 
 @router.message(CommandStart())
@@ -169,7 +168,7 @@ async def cmd_group_menu(message: types.Message):
 @router.callback_query(F.data == "main_help")
 async def process_main_help(callback: types.CallbackQuery):
     if callback.message.chat.type != "private":
-        await callback.answer("Panduan lengkap hanya tersedia di chat pribadi.", show_alert=True)
+        await callback.answer("Panduan lengkap tersedia di chat pribadi.", show_alert=True)
         return
     await cmd_help(callback.message)
     await callback.answer()
