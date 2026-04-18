@@ -88,24 +88,91 @@ async def admin_intel_cms(callback: types.CallbackQuery):
     await callback.message.edit_text(text, reply_markup=builder.as_markup())
     await callback.answer()
 
-@router.callback_query(F.data == "admin_cms_weapons")
-async def admin_cms_weapons(callback: types.CallbackQuery, content_service: ContentService):
+@router.callback_query(F.data == "admin_cms_maps")
+async def admin_cms_maps(callback: types.CallbackQuery, content_service: ContentService):
     if not is_owner(callback.from_user.id): return
-    weapons = await content_service.get_weapons()
+    maps = await content_service.get_maps()
     
-    text = get_header("Manajemen Senjata", "🔫")
-    text += "Daftar arsenal aktif di database:\n\n"
+    text = get_header("Manajemen Peta", "📍")
+    text += "Daftar sektor operasi aktif:\n\n"
     
     builder = InlineKeyboardBuilder()
-    for wid, winfo in weapons.items():
-        builder.button(text=f"‣ {winfo.get('name', wid)}", callback_data=f"admin_wpn_view_{wid}")
+    for mid, minfo in maps.items():
+        builder.button(text=f"‣ {minfo.get('name', mid)}", callback_data=f"admin_map_view_{mid}")
     
-    builder.button(text="➕ TAMBAH SENJATA", callback_data="admin_wpn_add")
+    builder.button(text="➕ TAMBAH PETA", callback_data="admin_map_add")
     builder.button(text="◃ KEMBALI", callback_data="admin_intel_cms")
     builder.adjust(2)
     
     await callback.message.edit_text(text, reply_markup=builder.as_markup())
     await callback.answer()
+
+@router.callback_query(F.data.startswith("admin_map_view_"))
+async def admin_map_view(callback: types.CallbackQuery, content_service: ContentService):
+    if not is_owner(callback.from_user.id): return
+    mid = callback.data.split("_")[3]
+    maps = await content_service.get_maps()
+    m = maps.get(mid)
+    
+    if not m:
+        await callback.answer("Peta tidak ditemukan.", show_alert=True)
+        return
+        
+    text = get_header(f"Sektor: {m['name']}", "📍")
+    text += f"<i>{m.get('description', '')}</i>\n\n"
+    text += "<b>Hotspots:</b>\n" + "\n".join([f"‣ {h}" for h in m.get('hotspots', [])])
+    
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🗑️ HAPUS", callback_data=f"admin_map_del_{mid}")
+    builder.button(text="◃ KEMBALI", callback_data="admin_cms_maps")
+    builder.adjust(1)
+    
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("admin_map_del_"))
+async def admin_map_del(callback: types.CallbackQuery, content_service: ContentService):
+    if not is_owner(callback.from_user.id): return
+    mid = callback.data.split("_")[3]
+    
+    data = await content_service.db.get_all()
+    if mid in data["content"]["maps"]:
+        del data["content"]["maps"][mid]
+        await content_service.db.save(data)
+        
+    await callback.answer("Peta dihapus.", show_alert=True)
+    await admin_cms_maps(callback, content_service)
+
+@router.callback_query(F.data.startswith("admin_wpn_view_"))
+async def admin_weapon_view(callback: types.CallbackQuery, content_service: ContentService):
+    if not is_owner(callback.from_user.id): return
+    wid = callback.data.split("_")[3]
+    weapons = await content_service.get_weapons()
+    w = weapons.get(wid)
+    
+    if not w:
+        await callback.answer("Senjata tidak ditemukan.", show_alert=True)
+        return
+        
+    text = get_header(f"Arsenal: {w['name']}", "🔫")
+    text += format_field("TIER", w.get('tier', 'N/A'))
+    text += f"\n<b>Loadout:</b>\n<i>{w.get('best_loadout', 'TBA')}</i>"
+    
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🗑️ HAPUS", callback_data=f"admin_wpn_del_{wid}")
+    builder.button(text="◃ KEMBALI", callback_data="admin_cms_weapons")
+    builder.adjust(1)
+    
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("admin_wpn_del_"))
+async def admin_weapon_del(callback: types.CallbackQuery, content_service: ContentService):
+    if not is_owner(callback.from_user.id): return
+    wid = callback.data.split("_")[3]
+    await content_service.delete_weapon(wid)
+    await callback.answer("Senjata dihapus.", show_alert=True)
+    await admin_cms_weapons(callback, content_service)
 
 # --- SECURITY HUB HANDLERS ---
 
