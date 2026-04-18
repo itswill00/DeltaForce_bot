@@ -2,7 +2,7 @@ import json
 import os
 from aiogram import Router, types, F
 from aiogram.types import InlineQuery, InlineQueryResultArticle, InputTextMessageContent
-from database.user_db import user_db
+from services.user_service import UserService
 from utils.style_utils import get_header
 
 router = Router()
@@ -15,33 +15,33 @@ if os.path.exists(MAP_DATA_PATH):
         MAP_DB = json.load(f)
 
 @router.inline_query()
-async def inline_handler(inline_query: InlineQuery):
+async def inline_handler(inline_query: InlineQuery, user_service: UserService):
     query = inline_query.query.strip().lower()
     results = []
 
     # 1. Profile Search (ign [name])
     if query.startswith("ign "):
         search_name = query[4:].strip()
-        all_users = await user_db.get_all_users()
+        all_users = await user_service.get_all_users()
         
         matches = []
-        for uid, udata in all_users.items():
-            if search_name in udata.get("ign", "").lower():
-                matches.append(udata)
+        for uid, user in all_users.items():
+            if search_name in user.ign.lower():
+                matches.append(user)
         
         for i, user in enumerate(matches[:5]):
             text = get_header("KARTU PROFIL OPERATOR", "👤")
             text += (
-                f"<b>IGN:</b> <code>{user['ign']}</code>\n"
-                f"<b>ROLE:</b> {user.get('role', 'N/A')}\n"
-                f"<b>LEVEL:</b> {user.get('level', 1)}\n"
-                f"<b>REP:</b> ⭐ {user.get('rep_points', 0)}"
+                f"<b>IGN:</b> <code>{user.ign}</code>\n"
+                f"<b>ROLE:</b> {user.role or 'N/A'}\n"
+                f"<b>LEVEL:</b> {user.level}\n"
+                f"<b>REP:</b> ⭐ {user.rep_points}"
             )
             
             results.append(InlineQueryResultArticle(
                 id=f"profile_{i}",
-                title=f"Profil: {user['ign']}",
-                description=f"Role: {user.get('role', 'N/A')} | Level: {user.get('level', 1)}",
+                title=f"Profil: {user.ign}",
+                description=f"Role: {user.role or 'N/A'} | Level: {user.level}",
                 input_message_content=InputTextMessageContent(
                     message_text=text,
                     parse_mode="HTML"

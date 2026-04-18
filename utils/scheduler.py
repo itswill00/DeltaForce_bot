@@ -1,7 +1,7 @@
 import asyncio
 import time
 import logging
-from database.lfg_db import lfg_db
+from database.json_manager import db_manager
 
 async def lfg_garbage_collector():
     """Background task to remove LFG sessions older than 2 hours."""
@@ -9,17 +9,21 @@ async def lfg_garbage_collector():
     while True:
         try:
             current_time = time.time()
-            all_sessions = await lfg_db.db.read()
+            all_data = await db_manager.get_all()
+            all_sessions = all_data.get("lfg", {})
             to_delete = []
             
-            for session_id, data in all_sessions.items():
+            for session_id, data in list(all_sessions.items()):
                 timestamp = data.get("timestamp", 0)
-                if current_time - timestamp > EXPIRY_TIME_SECONDS:
+                if timestamp and current_time - timestamp > EXPIRY_TIME_SECONDS:
                     to_delete.append(session_id)
             
-            for session_id in to_delete:
-                await lfg_db.delete_session(session_id)
-                logging.info(f"🗑️ Garbage Collector: Deleted expired LFG session {session_id}")
+            if to_delete:
+                for session_id in to_delete:
+                    if session_id in all_data["lfg"]:
+                        del all_data["lfg"][session_id]
+                    logging.info(f"🗑️ Garbage Collector: Deleted expired LFG session {session_id}")
+                await db_manager.save(all_data)
                 
         except Exception as e:
             logging.error(f"LFG GC Error: {e}")

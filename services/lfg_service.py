@@ -1,5 +1,6 @@
 from database.json_manager import DeltaJSONDB, db_manager
 import uuid
+import time
 from services.user_service import UserService
 
 class SessionDTO:
@@ -11,6 +12,10 @@ class SessionDTO:
         self.max_players = data.get("max_players")
         self.players = data.get("players", [])
         self.status = data.get("status", "open")
+        self.timestamp = data.get("timestamp", time.time())
+
+    def get(self, key, default=None):
+        return getattr(self, key, default)
 
 class LfgService:
     def __init__(self, db: DeltaJSONDB = db_manager):
@@ -22,6 +27,10 @@ class LfgService:
         s_data = data["lfg"].get(session_id)
         return SessionDTO(session_id, s_data) if s_data else None
 
+    async def get_all_sessions(self):
+        data = await self.db.get_all()
+        return {sid: SessionDTO(sid, s) for sid, s in data["lfg"].items()}
+
     async def create_session(self, host_id: int, host_name: str, lfg_type: str, max_players: int):
         data = await self.db.get_all()
         session_id = str(uuid.uuid4())[:8]
@@ -31,7 +40,8 @@ class LfgService:
             "lfg_type": lfg_type,
             "max_players": max_players,
             "players": [host_id],
-            "status": "open"
+            "status": "open",
+            "timestamp": time.time()
         }
         data["lfg"][session_id] = new_session
         await self.db.save(data)
@@ -74,3 +84,11 @@ class LfgService:
         lfg["players"].remove(user_id)
         await self.db.save(data)
         return SessionDTO(session_id, lfg), "Berhasil keluar."
+
+    async def delete_session(self, session_id: str):
+        data = await self.db.get_all()
+        if session_id in data["lfg"]:
+            del data["lfg"][session_id]
+            await self.db.save(data)
+            return True
+        return False

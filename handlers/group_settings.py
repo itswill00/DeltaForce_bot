@@ -3,13 +3,13 @@ import random
 from aiogram import Router, types, F, Bot
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from database.group_db import group_db
+from services.group_service import GroupService
 from utils.style_utils import get_header
 
 router = Router()
 
 @router.message(Command("settings_group"))
-async def cmd_settings_group(message: types.Message):
+async def cmd_settings_group(message: types.Message, group_service: GroupService):
     if message.chat.type == "private":
         await message.answer("❌ Perintah ini hanya berlaku di dalam Grup.")
         return
@@ -20,12 +20,11 @@ async def cmd_settings_group(message: types.Message):
         await message.answer("❌ Akses Ditolak: Hanya Admin Grup yang dapat merubah pengaturan.")
         return
 
-    group_info = await group_db.get_group(message.chat.id)
+    group_info = await group_service.get_group(message.chat.id)
     if not group_info:
-        await group_db.register_group(message.chat.id, message.chat.title)
-        group_info = await group_db.get_group(message.chat.id)
+        group_info = await group_service.register_group(message.chat.id, message.chat.title)
         
-    s = group_info.get("settings", {})
+    s = group_info.settings
     auto_intel = s.get("auto_intel", False)
     trivia_on = s.get("trivia_enabled", True)
     cleanup_on = s.get("auto_cleanup", True)
@@ -48,7 +47,7 @@ async def cmd_settings_group(message: types.Message):
     await message.answer(text, reply_markup=builder.as_markup())
 
 @router.callback_query(F.data.startswith("grpsett_"))
-async def process_group_settings(callback: types.CallbackQuery):
+async def process_group_settings(callback: types.CallbackQuery, group_service: GroupService):
     # Check if user is admin
     member = await callback.message.chat.get_member(callback.from_user.id)
     if member.status not in ["administrator", "creator"]:
@@ -67,7 +66,7 @@ async def process_group_settings(callback: types.CallbackQuery):
     if action not in label_map: return
     
     key, label = label_map[action]
-    await group_db.update_settings(callback.message.chat.id, key, val)
+    await group_service.update_settings(callback.message.chat.id, key, val)
     
     status_str = "DIAKTIFKAN" if val else "DIMATIKAN"
     await callback.message.edit_text(
@@ -79,7 +78,11 @@ async def process_group_settings(callback: types.CallbackQuery):
 
 async def broadcast_auto_intel(bot: Bot):
     """Function to be called by a scheduler or periodic task."""
-    active_groups = await group_db.get_active_intel_groups()
+    from services.group_service import GroupService
+    from database.json_manager import db_manager
+    group_service = GroupService(db_manager)
+    
+    active_groups = await group_service.get_active_intel_groups()
     if not active_groups: return
     
     # Load tactical tips (from intel handler or separate file)

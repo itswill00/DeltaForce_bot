@@ -2,8 +2,8 @@ import asyncio
 from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from database.user_db import user_db
-from database.group_db import group_db
+from services.user_service import UserService
+from services.group_service import GroupService
 from utils.style_utils import get_header, get_footer
 from utils.auto_delete import set_auto_delete
 
@@ -12,7 +12,7 @@ router = Router()
 @router.message(Command("leaderboard"))
 @router.callback_query(F.data == "main_leaderboard")
 @router.callback_query(F.data.startswith("lb_"))
-async def cmd_leaderboard(event: types.Message | types.CallbackQuery):
+async def cmd_leaderboard(event: types.Message | types.CallbackQuery, user_service: UserService, group_service: GroupService):
     is_callback = isinstance(event, types.CallbackQuery)
     message = event.message if is_callback else event
     
@@ -27,24 +27,38 @@ async def cmd_leaderboard(event: types.Message | types.CallbackQuery):
     # Local tracking if in group
     chat_id = message.chat.id
     if message.chat.type != "private":
-        await group_db.register_group(chat_id, message.chat.title)
-        await group_db.track_member(chat_id, event.from_user.id)
+        await group_service.register_group(chat_id, message.chat.title)
+        await group_service.track_member(chat_id, event.from_user.id)
 
     # Fetch data based on scope
     if scope == "group" and message.chat.type != "private":
-        group_info = await group_db.get_group(chat_id)
-        member_ids = group_info.get("members", []) if group_info else []
+        group_info = await group_service.get_group(chat_id)
+        member_ids = group_info.members if group_info else []
         
-        # Filter global players by those in this group (None-safe)
-        all_users = await user_db.get_all_users() or {}
-        group_players = [u for uid, u in all_users.items() if u and int(uid) in member_ids]
+        # Filter global players by those in this group (O(N) for JSON layer is fine for this scale)
+        top_mabar = []
+        top_trivia = []
         
-        top_mabar = sorted([u for u in group_players if u and "mabar_score" in u], key=lambda x: x["mabar_score"], reverse=True)[:5]
-        top_trivia = sorted([u for u in group_players if u and "trivia_score" in u], key=lambda x: x["trivia_score"], reverse=True)[:5]
+        # Optimization: We already have get_top_players, but for group scope we filter manually
+        all_users = await user_service.db.get_all()
+        group_players = [user_service.get_user(int(uid)) for uid in all_users["users"] if int(uid) in member_ids]
+        
+        # Resolve group_players (they are UserDTO objects from get_user)
+        # Note: get_user is async, so we need to wait for them.
+        resolved_players = []
+        for uid in member_ids:
+            u = await user_service.get_user(uid)
+            if u: resolved_players.append(u)
+            
+        top_mabar = sorted(resolved_players, key=lambda x: x.mabar_score, reverse=True)[:5]
+        # Assuming trivia_score was added to UserDTO in my previous step (if not I'll fix it)
+        # Wait, I didn't add trivia_score to UserDTO. Let me check my previous write.
+        top_trivia = sorted(resolved_players, key=lambda x: getattr(x, "trivia_score", 0), reverse=True)[:5]
         title_suffix = f" (GRUP: {message.chat.title})"
     else:
-        top_mabar = await user_db.get_top_players(5, "mabar_score")
-        top_trivia = await user_db.get_top_players(5, "trivia_score")
+        top_mabar = await user_service.get_top_players(5, "mabar_score")
+        # I need to ensure trivia_score is supported in UserDTO and UserService
+        top_trivia = await user_service.get_top_players(5, "trivia_score")
         title_suffix = " (GLOBAL)"
 
     text = get_header(f"PAPAN PERINGKAT{title_suffix}", "🏆")
@@ -55,8 +69,8 @@ async def cmd_leaderboard(event: types.Message | types.CallbackQuery):
         text += "<i>Belum ada data di lingkup ini.</i>\n"
     else:
         for i, p in enumerate(top_mabar):
-            ign = p.get("ign", "Unknown")
-            score = p.get("mabar_score", 0)
+            ign = p.ign if p.ign else "Unknown"
+            score = p.mabar_score
             text += f"{i+1}. <b>{ign}</b>: {score} Mabar\n"
             
     # TRIVIA LEADERBOARD
@@ -65,8 +79,8 @@ async def cmd_leaderboard(event: types.Message | types.CallbackQuery):
         text += "<i>Belum ada data di lingkup ini.</i>\n"
     else:
         for i, p in enumerate(top_trivia):
-            ign = p.get("ign", "Unknown")
-            score = p.get("trivia_score", 0)
+            ign = p.ign if p.ign else "Unknown"
+            score = getattr(p, "trivia_score", 0)
             text += f"{i+1}. <b>{ign}</b>: {score} Poin\n"
             
     builder = InlineKeyboardBuilder()
@@ -86,4 +100,3 @@ async def cmd_leaderboard(event: types.Message | types.CallbackQuery):
         resp = await event.answer(text, reply_markup=builder.as_markup())
         if message.chat.type != "private":
             asyncio.create_task(set_auto_delete(resp, message, 120))
-

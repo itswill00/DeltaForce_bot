@@ -6,7 +6,8 @@ from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from utils.style_utils import get_header, get_footer
-from database.user_db import user_db
+from services.user_service import UserService
+from services.group_service import GroupService
 
 router = Router()
 
@@ -16,19 +17,25 @@ def get_trivia_data():
         with open(file_path, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception:
-        return []
+        # Fallback if file doesn't exist
+        return [
+            {
+                "question": "Siapa pengembang game Delta Force: Hawk Ops?",
+                "options": ["Tencent (TiMi)", "Activision", "EA", "Ubisoft"],
+                "answer": 0
+            }
+        ]
 
 @router.message(Command("trivia"))
 @router.callback_query(F.data == "main_trivia")
-async def cmd_trivia(event: types.Message | types.CallbackQuery):
+async def cmd_trivia(event: types.Message | types.CallbackQuery, user_service: UserService, group_service: GroupService):
     is_callback = isinstance(event, types.CallbackQuery)
     message = event.message if is_callback else event
     
     # Check group settings if in group
     if message.chat.type != "private":
-        from database.group_db import group_db
-        group_info = await group_db.get_group(message.chat.id)
-        if group_info and not group_info.get("settings", {}).get("trivia_enabled", True):
+        group_info = await group_service.get_group(message.chat.id)
+        if group_info and not group_info.settings.get("trivia_enabled", True):
             if is_callback:
                 await event.answer("❌ Trivia dinonaktifkan di grup ini.", show_alert=True)
             else:
@@ -69,7 +76,7 @@ async def cmd_trivia(event: types.Message | types.CallbackQuery):
         await event.answer(text, reply_markup=builder.as_markup())
 
 @router.callback_query(F.data.startswith("triv_"))
-async def process_trivia(callback: types.CallbackQuery):
+async def process_trivia(callback: types.CallbackQuery, user_service: UserService, group_service: GroupService):
     parts = callback.data.split("_")
     if len(parts) == 2 and parts[1] == "done":
         await callback.answer("Simulasi ini telah diselesaikan.", show_alert=True)
@@ -78,23 +85,19 @@ async def process_trivia(callback: types.CallbackQuery):
     q_idx = int(parts[1])
     chosen = int(parts[2])
     correct = int(parts[3])
-    start_time = int(parts[4]) if len(parts) > 4 else None
+    start_time_val = int(parts[4]) if len(parts) > 4 else None
     
-    delta = time.time() - start_time if start_time else 0
+    delta = time.time() - start_time_val if start_time_val else 0
     time_str = f" dalam {delta:.1f} detik" if delta > 0 else ""
     
     questions = get_trivia_data()
     q = questions[q_idx]
     
-    # Disable the buttons so nobody else can answer
-    builder = InlineKeyboardBuilder()
-    builder.button(text="[ Sesi Berakhir ]", callback_data="triv_done")
-    
     user_name = callback.from_user.first_name
     
     if chosen == correct:
-        await user_db.increment_trivia_score(callback.from_user.id, 5)
-        await user_db.add_balance(callback.from_user.id, 100)
+        await user_service.increment_trivia_score(callback.from_user.id, 5)
+        await user_service.add_balance(callback.from_user.id, 100)
         
         text = get_header("EVALUASI: TEPAT!", "✅")
         text += (
@@ -105,8 +108,7 @@ async def process_trivia(callback: types.CallbackQuery):
         
         # Track group member
         if callback.message.chat.type != "private":
-            from database.group_db import group_db
-            await group_db.track_member(callback.message.chat.id, callback.from_user.id)
+            await group_service.track_member(callback.message.chat.id, callback.from_user.id)
         
         builder = InlineKeyboardBuilder()
         builder.button(text="🧠 Main Lagi", callback_data="main_trivia")

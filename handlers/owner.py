@@ -1,8 +1,8 @@
 from aiogram import Router, types
 from aiogram.filters import Command
 from config import settings
-from database.user_db import user_db
-from database.lfg_db import lfg_db
+from services.user_service import UserService
+from services.lfg_service import LfgService
 from utils.group_logger import send_log
 import psutil
 import time
@@ -13,15 +13,16 @@ def is_owner(user_id: int) -> bool:
     return user_id == settings.owner_id
 
 @router.message(Command("sys"))
-async def cmd_sys(message: types.Message):
+async def cmd_sys(message: types.Message, user_service: UserService, lfg_service: LfgService):
     if not is_owner(message.from_user.id):
         return
         
     start_time = time.time()
     
     # Gathering data
-    user_count = await user_db.get_user_count()
-    all_lfg = await lfg_db.db.read()
+    user_count = await user_service.get_user_count()
+    all_data = await lfg_service.db.get_all()
+    all_lfg = all_data.get("lfg", {})
     active_lfg_count = len([k for k,v in all_lfg.items() if v.get("status") == "open"])
     
     # System resources
@@ -41,11 +42,20 @@ async def cmd_sys(message: types.Message):
         f"<code>/deladmin [user_id]</code> - Cabut hak Admin"
     )
     
-    from handlers.general import get_close_kb
-    await message.answer(text, reply_markup=get_close_kb())
+    # Check if get_close_kb exists in general, else use a simple builder
+    try:
+        from handlers.general import get_close_kb
+        kb = get_close_kb()
+    except ImportError:
+        from aiogram.utils.keyboard import InlineKeyboardBuilder
+        builder = InlineKeyboardBuilder()
+        builder.button(text="❌ Tutup", callback_data="close_msg")
+        kb = builder.as_markup()
+
+    await message.answer(text, reply_markup=kb)
 
 @router.message(Command("addadmin"))
-async def cmd_addadmin(message: types.Message):
+async def cmd_addadmin(message: types.Message, user_service: UserService):
     if not is_owner(message.from_user.id): return
     
     args = message.text.split()
@@ -54,12 +64,12 @@ async def cmd_addadmin(message: types.Message):
         return
         
     target_id = int(args[1])
-    await user_db.set_admin_status(target_id, True)
+    await user_service.set_admin_status(target_id, True)
     await send_log(message.bot, "ADMIN_ACTION", f"Owner mengangkat ID <code>{target_id}</code> menjadi Admin.")
     await message.answer(f"Status Admin diberikan kepada ID <code>{target_id}</code>.")
 
 @router.message(Command("deladmin"))
-async def cmd_deladmin(message: types.Message):
+async def cmd_deladmin(message: types.Message, user_service: UserService):
     if not is_owner(message.from_user.id): return
     
     args = message.text.split()
@@ -68,23 +78,31 @@ async def cmd_deladmin(message: types.Message):
         return
         
     target_id = int(args[1])
-    await user_db.set_admin_status(target_id, False)
+    await user_service.set_admin_status(target_id, False)
     await send_log(message.bot, "ADMIN_ACTION", f"Owner mencabut akses Admin dari ID <code>{target_id}</code>.")
     await message.answer(f"Status Admin dicabut dari ID <code>{target_id}</code>.")
 
 @router.message(Command("force_gc"))
-async def cmd_force_gc(message: types.Message):
+async def cmd_force_gc(message: types.Message, lfg_service: LfgService):
     if not is_owner(message.from_user.id): return
     
-    all_sessions = await lfg_db.db.read()
+    all_data = await lfg_service.db.get_all()
+    all_sessions = all_data.get("lfg", {})
     to_delete = []
     current_time = time.time()
     
-    for session_id, data in all_sessions.items():
-        if current_time - data.get("timestamp", 0) > 7200: # 2 hours
+    # This manual cleanup is less efficient with JSON but safe for small scale
+    for session_id, data in list(all_sessions.items()):
+        # Note: session DTO might not have timestamp if not saved, 
+        # but the raw data in lfg should have it from previous versions 
+        # or we add it to create_session.
+        ts = data.get("timestamp", 0)
+        if ts and current_time - ts > 7200: # 2 hours
             to_delete.append(session_id)
             
     for s_id in to_delete:
-        await lfg_db.delete_session(s_id)
+        if s_id in all_data["lfg"]:
+            del all_data["lfg"][s_id]
         
+    await lfg_service.db.save(all_data)
     await message.answer(f"<b>PEMBERSIHAN SISTEM</b>\n{len(to_delete)} Sesi LFG kadaluarsa dihapus secara manual.")

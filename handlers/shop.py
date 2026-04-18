@@ -1,7 +1,7 @@
 from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from database.user_db import user_db
+from services.user_service import UserService
 from utils.style_utils import get_header, get_footer
 
 router = Router()
@@ -15,7 +15,7 @@ CATALOG = {
 
 @router.message(Command("shop"))
 @router.callback_query(F.data == "main_shop")
-async def cmd_shop(event: types.Message | types.CallbackQuery):
+async def cmd_shop(event: types.Message | types.CallbackQuery, user_service: UserService):
     is_callback = isinstance(event, types.CallbackQuery)
     message = event.message if is_callback else event
     user_id = event.from_user.id
@@ -29,8 +29,8 @@ async def cmd_shop(event: types.Message | types.CallbackQuery):
         await message.answer(text, reply_markup=builder.as_markup())
         return
 
-    user_data = await user_db.get_user(user_id)
-    if not user_data or "ign" not in user_data:
+    user_data = await user_service.get_user(user_id)
+    if not user_data or not user_data.ign:
         text = "❌ Profil tidak ditemukan. Silakan daftar terlebih dahulu sebelum berbelanja."
         builder = InlineKeyboardBuilder()
         builder.button(text="🚀 Daftar Sekarang", callback_data="start_register")
@@ -39,7 +39,7 @@ async def cmd_shop(event: types.Message | types.CallbackQuery):
         else: await event.answer(text, reply_markup=builder.as_markup())
         return
         
-    balance = user_data.get("balance", 0)
+    balance = user_data.balance
     
     text = get_header("BURSA PANGKAT & ITEM", "🛒")
     text += f"💰 <b>SALDO:</b> {balance} Coins\n\n"
@@ -59,7 +59,7 @@ async def cmd_shop(event: types.Message | types.CallbackQuery):
         await event.answer(text, reply_markup=builder.as_markup())
 
 @router.callback_query(F.data.startswith("buy_"))
-async def process_buy(callback: types.CallbackQuery):
+async def process_buy(callback: types.CallbackQuery, user_service: UserService):
     item_id = callback.data.split("_")[1]
     item = CATALOG.get(item_id)
     
@@ -67,26 +67,26 @@ async def process_buy(callback: types.CallbackQuery):
         await callback.answer("❌ Item tidak tersedia atau kadaluarsa.", show_alert=True)
         return
         
-    user_data = await user_db.get_user(callback.from_user.id)
+    user_data = await user_service.get_user(callback.from_user.id)
     if not user_data:
         await callback.answer("❌ Profil tidak ditemukan. Silakan /register.", show_alert=True)
         return
         
-    balance = user_data.get("balance", 0)
+    balance = user_data.balance
     
     if balance < item["price"]:
         await callback.answer(f"❌ Saldo tidak cukup! Butuh {item['price']}, Saldo Anda {balance}.", show_alert=True)
         return
         
     # Grant item (add to a list in user_db)
-    owned_items = user_data.get("owned_items", [])
+    owned_items = user_data.owned_items or []
     if item_id in owned_items:
         await callback.answer("⚠️ Anda sudah memiliki tanda pangkat ini.", show_alert=True)
         return
         
     owned_items.append(item_id)
-    await user_db.add_balance(callback.from_user.id, -item["price"])
-    await user_db.update_user(callback.from_user.id, {"owned_items": owned_items})
+    await user_service.add_balance(callback.from_user.id, -item["price"])
+    await user_service.update_user(callback.from_user.id, {"owned_items": owned_items})
     
     await callback.answer(f"✅ Transaksi Berhasil: {item['name']} diperoleh!", show_alert=True)
     
