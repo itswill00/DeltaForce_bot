@@ -57,23 +57,8 @@ def get_group_command_kb(bot_username: str):
     builder.adjust(2)
     return builder.as_markup()
 
-@router.message(Command("checkid"))
-async def cmd_checkid(message: types.Message):
-    """Deep debug command for owner detection."""
-    user_id = message.from_user.id
-    config_owner = settings.owner_id
-    match = int(user_id) == int(config_owner)
-    
-    text = (
-        get_header("ID AUDIT", "🔍") +
-        f"⬢ <b>ID Kamu:</b> <code>{user_id}</code>\n"
-        f"⬢ <b>ID Owner di Bot:</b> <code>{config_owner}</code>\n"
-        f"⬢ <b>Status Match:</b> <code>{'MATCH' if match else 'NO MATCH'}</code>\n\n"
-        "<i>Gunakan info ini untuk mencocokkan OWNER_ID di .env kamu.</i>"
-    )
-    await message.answer(text)
+@router.callback_query(F.data == "close_msg")
 
-@router.message(Command("help"))
 async def cmd_help(message: types.Message):
     if message.chat.type != "private": return
     text = get_header("Pusat Bantuan", "◇")

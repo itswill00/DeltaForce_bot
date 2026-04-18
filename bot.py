@@ -53,11 +53,6 @@ async def notify_restart_success():
                 message_id=msg_id,
                 text=text
             )
-            
-            # Announce authorized owner to Log Group
-            from utils.group_logger import send_log
-            await send_log(bot, "ADMIN_ACTION", f"Sistem Online. Authorized Owner ID: <code>{settings.owner_id}</code>")
-            
             logging.info(f"Restart success notification sent with info: {commit_info}")
         except Exception as e:
             logging.error(f"Failed to send restart notification: {e}")

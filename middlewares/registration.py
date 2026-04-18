@@ -6,7 +6,7 @@ from services.user_service import UserService
 from utils.auto_delete import set_auto_delete
 
 # Core whitelisted commands
-ALLOWED_CMDS = {"/start", "/register", "/needhelp", "/sys", "/addadmin", "/deladmin", "/force_gc", "/menu", "/dashboard", "/checkid", "/refresh"}
+ALLOWED_CMDS = {"/start", "/register", "/needhelp", "/sys", "/addadmin", "/deladmin", "/force_gc", "/menu", "/dashboard", "/refresh"}
 
 class RegistrationMiddleware(BaseMiddleware):
     async def __call__(
