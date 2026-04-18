@@ -12,11 +12,13 @@ import random
 from datetime import datetime
 
 router = Router()
+
 def get_dashboard_kb(user_id: int, is_registered: bool = False, page: int = 1):
     builder = InlineKeyboardBuilder()
-
+    
     # Priority: COMMAND CENTER for Owner
-    if int(user_id) == int(settings.owner_id):
+    is_owner = int(user_id) == int(settings.owner_id)
+    if is_owner:
         builder.button(text="◈ COMMAND CENTER", callback_data="admin_dashboard")
 
     if not is_registered:
@@ -30,18 +32,18 @@ def get_dashboard_kb(user_id: int, is_registered: bool = False, page: int = 1):
             builder.button(text="⬡ DATA INTEL", callback_data="main_intel")
             builder.button(text="⬢ LOADOUTS", callback_data="main_meta")
             builder.button(text="▹ MENU LAIN", callback_data="main_page_2")
-
-            # If owner, 1 (CC) + 5 = 6 buttons. adjust(1, 2, 2, 1) or similar.
-            # We'll use adjust(1) then follow standard to be safe.
-            builder.adjust(1, 2, 2, 1)
+            
+            # If owner, row 1 is CC. Others are 2, 2, 1.
+            if is_owner:
+                builder.adjust(1, 2, 2, 1)
+            else:
+                builder.adjust(2, 2, 1)
         else:
-...
             builder.button(text="◈ PERINGKAT", callback_data="main_leaderboard")
             builder.button(text="⌬ BURSA ITEM", callback_data="main_shop")
             builder.button(text="🧠 TRIVIA", callback_data="main_trivia")
             builder.button(text="🚑 OPERATOR", callback_data="main_operator")
             builder.button(text="◃ KEMBALI", callback_data="main_page_1")
-            
             builder.adjust(2, 2, 1)
             
     return builder.as_markup()
@@ -55,10 +57,25 @@ def get_group_command_kb(bot_username: str):
     builder.adjust(2)
     return builder.as_markup()
 
+@router.message(Command("checkid"))
+async def cmd_checkid(message: types.Message):
+    """Deep debug command for owner detection."""
+    user_id = message.from_user.id
+    config_owner = settings.owner_id
+    match = int(user_id) == int(config_owner)
+    
+    text = (
+        get_header("ID AUDIT", "🔍") +
+        f"⬢ <b>ID Kamu:</b> <code>{user_id}</code>\n"
+        f"⬢ <b>ID Owner di Bot:</b> <code>{config_owner}</code>\n"
+        f"⬢ <b>Status Match:</b> <code>{'MATCH' if match else 'NO MATCH'}</code>\n\n"
+        "<i>Gunakan info ini untuk mencocokkan OWNER_ID di .env kamu.</i>"
+    )
+    await message.answer(text)
+
 @router.message(Command("help"))
 async def cmd_help(message: types.Message):
     if message.chat.type != "private": return
-
     text = get_header("Pusat Bantuan", "◇")
     text += (
         "Selamat datang di panduan navigasi Delta Force Hub. Berikut perintah yang tersedia:\n\n"
@@ -80,26 +97,11 @@ async def cmd_help(message: types.Message):
 
 @router.callback_query(F.data == "close_msg")
 async def process_close_msg(callback: types.CallbackQuery):
-    """Global handler to delete a message (Close button)."""
     try:
         await callback.message.delete()
     except Exception:
         await callback.answer("Pesan terlalu lama untuk dihapus.", show_alert=True)
     await callback.answer()
-
-@router.message(Command("checkid"))
-async def cmd_checkid(message: types.Message):
-    """Temporary debug command to identify ID mismatch."""
-    user_id = message.from_user.id
-    config_owner = settings.owner_id
-    
-    text = (
-        f"◈ <b>DEBUG ID AUDIT</b>\n"
-        f"⬢ ID Kamu: <code>{user_id}</code>\n"
-        f"⬢ ID Owner di Bot: <code>{config_owner}</code>\n\n"
-        f"<i>Jika kedua angka di atas berbeda, artinya OWNER_ID di .env belum tepat atau belum terbaca.</i>"
-    )
-    await message.answer(text)
 
 @router.message(CommandStart())
 @router.message(Command("menu", "dashboard"))

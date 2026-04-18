@@ -1,12 +1,14 @@
 import os
-import yaml
 import json
 from typing import List, Union, Any
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from dotenv import load_dotenv
+
+# Explicitly load .env from the current working directory
+load_dotenv()
 
 class Settings(BaseSettings):
-    # All defaults are now placeholders or strictly controlled
     bot_token: str
     local_db_path: str = "localdb.json"
     owner_id: int = 0
@@ -33,5 +35,5 @@ class Settings(BaseSettings):
             return [int(x.strip()) for x in v.split(",") if x.strip().isdigit()]
         return v or []
 
-# Force validation: This will raise an error if BOT_TOKEN is missing from .env
+# Final validation
 settings = Settings()
