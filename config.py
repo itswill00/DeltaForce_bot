@@ -6,7 +6,8 @@ from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    bot_token: str = "YOUR_TELEGRAM_BOT_TOKEN_HERE"
+    # All defaults are now placeholders or strictly controlled
+    bot_token: str
     local_db_path: str = "localdb.json"
     owner_id: int = 0
     admin_ids: Any = []
@@ -24,22 +25,13 @@ class Settings(BaseSettings):
     @classmethod
     def parse_admin_ids(cls, v: Any) -> List[int]:
         if isinstance(v, str):
-            if not v.strip():
-                return []
+            if not v.strip(): return []
             try:
                 data = json.loads(v)
-                if isinstance(data, list):
-                    return [int(x) for x in data]
-            except (json.JSONDecodeError, ValueError):
-                pass
+                if isinstance(data, list): return [int(x) for x in data]
+            except (json.JSONDecodeError, ValueError): pass
             return [int(x.strip()) for x in v.split(",") if x.strip().isdigit()]
-        return v
+        return v or []
 
-# Load defaults from config.yaml if it exists
-_config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
-if os.path.exists(_config_path):
-    with open(_config_path, "r", encoding="utf-8") as f:
-        yaml_data = yaml.safe_load(f) or {}
-    settings = Settings(**yaml_data)
-else:
-    settings = Settings()
+# Force validation: This will raise an error if BOT_TOKEN is missing from .env
+settings = Settings()
