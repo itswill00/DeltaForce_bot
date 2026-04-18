@@ -16,6 +16,13 @@ class Settings(BaseSettings):
     log_group_id: int = 0
     loadout_path: str = "data/loadout.json"
     auto_delete_delay: int = 60
+    
+    # Visual Banners (High Quality Assets)
+    banner_main: str = "https://i.ibb.co.com/X4yDqC3G/IMG-20250419-WA0019.jpg"
+    banner_profile: str = "https://i.ibb.co.com/X4yDqC3G/IMG-20250419-WA0019.jpg"
+    banner_lfg: str = "https://i.ibb.co.com/X4yDqC3G/IMG-20250419-WA0019.jpg"
+    banner_shop: str = "https://i.ibb.co.com/X4yDqC3G/IMG-20250419-WA0019.jpg"
+    banner_intel: str = "https://i.ibb.co.com/X4yDqC3G/IMG-20250419-WA0019.jpg"
 
     model_config = SettingsConfigDict(
         env_file=".env",
