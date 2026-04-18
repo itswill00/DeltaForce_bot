@@ -1,13 +1,22 @@
 import logging
 from aiogram import Bot
 from config import settings
+import time
 
 async def send_log(bot: Bot, action_type: str, details: str):
     """
-    Sends a formatted log message to the designated LOG_GROUP_ID.
-    action_type: Brief category (e.g. "NEW_USER", "INTERAKSI_USER")
-    details: Detailed description of the event.
+    Enterprise Logger: Mirrors all events to both Telegram Log Group and VPS Terminal.
     """
+    # 1. Terminal Logging (Local Mirror)
+    timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+    # Strip HTML tags for clean terminal output
+    clean_details = details.replace("<b>", "").replace("</b>", "").replace("<code>", "").replace("</code>", "").replace("<pre>", "").replace("</pre>", "")
+    print(f"[{timestamp}] [AUDIT] {action_type}: {clean_details}")
+    
+    # Standard python logging integration
+    logging.info(f"AUDIT_{action_type}: {clean_details}")
+
+    # 2. Telegram Logging (Remote Audit)
     if not settings.log_group_id:
         return
         
@@ -30,6 +39,7 @@ async def send_log(bot: Bot, action_type: str, details: str):
     )
     
     try:
+        # Use attempt-based logic to avoid blocking if Telegram API is slow
         await bot.send_message(chat_id=settings.log_group_id, text=text)
     except Exception as e:
-        logging.error(f"Failed to send log to group {settings.log_group_id}: {e}")
+        logging.error(f"Failed to mirror log to Telegram: {e}")
