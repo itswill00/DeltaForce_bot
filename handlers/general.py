@@ -3,6 +3,7 @@ from aiogram.filters import CommandStart, Command, ChatMemberUpdatedFilter, JOIN
 from aiogram.types import ChatMemberUpdated
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from services.user_service import UserService
+from config import settings
 from utils.style_utils import get_header, get_footer
 from utils.auto_delete import set_auto_delete
 from views.dashboard_view import render_dashboard
@@ -12,7 +13,7 @@ from datetime import datetime
 
 router = Router()
 
-def get_dashboard_kb(is_registered: bool = False, page: int = 1):
+def get_dashboard_kb(user_id: int, is_registered: bool = False, page: int = 1):
     builder = InlineKeyboardBuilder()
     if not is_registered:
         builder.button(text="◈ DAFTAR SEKARANG", callback_data="start_register")
@@ -32,7 +33,12 @@ def get_dashboard_kb(is_registered: bool = False, page: int = 1):
             builder.button(text="🧠 TRIVIA", callback_data="main_trivia")
             builder.button(text="🚑 OPERATOR", callback_data="main_operator")
             builder.button(text="◃ KEMBALI", callback_data="main_page_1")
-            builder.adjust(2, 2, 1)
+            
+            # Invisible Command Center for Owner
+            if user_id == settings.owner_id:
+                builder.button(text="◈ COMMAND CENTER", callback_data="admin_dashboard")
+                
+            builder.adjust(2, 2, 1, 1)
             
     return builder.as_markup()
 
@@ -66,7 +72,6 @@ async def cmd_help(message: types.Message):
     )
     builder = InlineKeyboardBuilder()
     builder.button(text="◃ MENU UTAMA", callback_data="main_menu")
-
     await message.answer(text, reply_markup=builder.as_markup())
 
 @router.callback_query(F.data == "close_msg")
@@ -75,13 +80,14 @@ async def process_close_msg(callback: types.CallbackQuery):
     try:
         await callback.message.delete()
     except Exception:
-        # Fallback if message cannot be deleted (e.g. older than 48h)
         await callback.answer("Pesan terlalu lama untuk dihapus.", show_alert=True)
     await callback.answer()
 
 @router.message(CommandStart())
-async def cmd_start(message: types.Message, user_service: UserService, command: CommandStart):
+@router.message(Command("menu", "dashboard"))
+async def cmd_start(message: types.Message, user_service: UserService, command: CommandStart = None):
     bot_user = await message.bot.get_me()
+    user_id = message.from_user.id
     
     if message.chat.type in ["group", "supergroup"]:
         text = get_header("Hub Taktis Aktif", "◈")
@@ -92,11 +98,10 @@ async def cmd_start(message: types.Message, user_service: UserService, command: 
         await message.answer(text, reply_markup=get_group_command_kb(bot_user.username))
         return
         
-    user_id = message.from_user.id
     user_data = await user_service.get_user(user_id)
     is_reg = user_data and user_data.ign
     
-    if command and command.args:
+    if command and hasattr(command, 'args') and command.args:
         arg = command.args.strip().lower()
         if arg == "reg":
             from handlers.profile import cmd_register
@@ -126,12 +131,7 @@ async def cmd_start(message: types.Message, user_service: UserService, command: 
         )
         
     text += "\n" + get_footer()
-    await message.answer(text, reply_markup=get_dashboard_kb(is_reg))
-
-@router.message(Command("menu", "dashboard"))
-async def cmd_dashboard_manual(message: types.Message, user_service: UserService):
-    if message.chat.type != "private": return
-    await cmd_start(message, user_service, CommandStart())
+    await message.answer(text, reply_markup=get_dashboard_kb(user_id, is_reg))
 
 @router.callback_query(F.data == "main_menu")
 @router.callback_query(F.data == "main_page_1")
@@ -139,7 +139,7 @@ async def process_main_menu(callback: types.CallbackQuery, user_service: UserSer
     user_data = await user_service.get_user(callback.from_user.id)
     is_reg = user_data and user_data.ign
     text = render_dashboard(user_data, is_reg, page=1)
-    await callback.message.edit_text(text, reply_markup=get_dashboard_kb(is_reg, page=1))
+    await callback.message.edit_text(text, reply_markup=get_dashboard_kb(callback.from_user.id, is_reg, page=1))
     await callback.answer()
 
 @router.callback_query(F.data == "main_page_2")
@@ -150,7 +150,7 @@ async def process_main_page_2(callback: types.CallbackQuery, user_service: UserS
         await callback.answer("Silakan mendaftar terlebih dahulu.", show_alert=True)
         return
     text = render_dashboard(user_data, is_reg, page=2)
-    await callback.message.edit_text(text, reply_markup=get_dashboard_kb(is_reg, page=2))
+    await callback.message.edit_text(text, reply_markup=get_dashboard_kb(callback.from_user.id, is_reg, page=2))
     await callback.answer()
 
 @router.message(Command("cmd", "gmenu"))

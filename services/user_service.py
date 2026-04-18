@@ -140,6 +140,42 @@ class UserService:
             data["users"][uid]["is_admin"] = is_admin
         await self.db.save(data)
 
+    async def get_global_stats(self):
+        """Aggregates community-wide statistics."""
+        data = await self.db.get_all()
+        users = data.get("users", {})
+        stats = {
+            "total_users": len(users),
+            "total_coins": 0,
+            "total_xp": 0,
+            "roles": {"Assault": 0, "Medic": 0, "Engineer": 0, "Recon": 0},
+            "avg_level": 0
+        }
+        
+        if not users: return stats
+        
+        total_lv = 0
+        for u in users.values():
+            stats["total_coins"] += u.get("balance", 0)
+            stats["total_xp"] += u.get("xp", 0)
+            total_lv += u.get("level", 1)
+            role = u.get("role")
+            if role in stats["roles"]:
+                stats["roles"][role] += 1
+        
+        stats["avg_level"] = round(total_lv / stats["total_users"], 1) if stats["total_users"] > 0 else 0
+        return stats
+
+    async def find_user_by_ign(self, ign: str):
+        """Search for a user by their in-game name."""
+        data = await self.db.get_all()
+        users = data.get("users", {})
+        ign_lower = ign.lower()
+        for uid, u in users.items():
+            if u.get("ign", "").lower() == ign_lower:
+                return UserDTO(int(uid), u)
+        return None
+
     async def update_last_login(self, user_id: int):
         data = await self.db.get_all()
         uid = str(user_id)
