@@ -57,7 +57,8 @@ async def cmd_shop(event: types.Message | types.CallbackQuery, user_service: Use
 
 @router.callback_query(F.data.startswith("buy_"))
 async def process_buy(callback: types.CallbackQuery, user_service: UserService):
-    item_id = callback.data.split("_")[1]
+    # Use replace to get the full ID even if it contains underscores
+    item_id = callback.data.replace("buy_", "")
     item = CATALOG.get(item_id)
     if not item: return
         
