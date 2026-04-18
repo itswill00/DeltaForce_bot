@@ -60,7 +60,7 @@ async def notify_restart_success():
 async def main():
     # 1. Setup Enterprise Middlewares (Outermost First)
     dp.update.outer_middleware(ErrorHandlerMiddleware())            # Global Error Sentinel
-    dp.update.outer_middleware(ThrottlingMiddleware(rate_limit=1.5)) # Anti-Spam
+    dp.update.outer_middleware(ThrottlingMiddleware(rate_limit=0.8)) # Reduced from 1.5s for snappiness
     dp.update.outer_middleware(DbSessionMiddleware())               # DB Session
     dp.update.outer_middleware(EventLoggerMiddleware())             # Interaction Logger
     

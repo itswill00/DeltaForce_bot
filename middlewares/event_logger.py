@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Callable, Dict, Any, Awaitable
 from aiogram import BaseMiddleware
@@ -6,8 +7,8 @@ from utils.group_logger import send_log
 
 class EventLoggerMiddleware(BaseMiddleware):
     """
-    Enterprise Event Auditor.
-    Intercepts all messages and callback queries to log them into the LOG_GROUP_ID.
+    Enterprise Event Auditor - Optimized for Speed.
+    Logs interactions in the background to prevent blocking user response.
     """
     async def __call__(
         self,
@@ -15,7 +16,7 @@ class EventLoggerMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: Dict[str, Any]
     ) -> Any:
-        # Process the event first to ensure it's valid
+        # 1. Process the handler IMMEDIATELY
         response = await handler(event, data)
         
         user = data.get("event_from_user")
@@ -25,17 +26,16 @@ class EventLoggerMiddleware(BaseMiddleware):
         bot = data.get("bot")
         chat = data.get("event_chat")
         
-        # Determine interaction type
-        if isinstance(event, Message):
-            if not event.text: return response # Ignore stickers, photos, etc for general logs unless needed
-            
+        # 2. Log in the background (Non-blocking)
+        if isinstance(event, Message) and event.text:
             chat_info = f"<b>Grup:</b> {chat.title}" if chat.type != "private" else "<b>Private Chat</b>"
             log_text = (
                 f"👤 <b>User:</b> {user.full_name} (<code>{user.id}</code>)\n"
                 f"📍 <b>Sektor:</b> {chat_info}\n"
                 f"💬 <b>Pesan:</b> <code>{event.text}</code>"
             )
-            await send_log(bot, "INTERAKSI_USER", log_text)
+            # Create background task so we don't wait for the network request
+            asyncio.create_task(send_log(bot, "INTERAKSI_USER", log_text))
 
         elif isinstance(event, CallbackQuery):
             chat_info = f"<b>Grup:</b> {chat.title}" if chat.type != "private" else "<b>Private Chat</b>"
@@ -44,6 +44,7 @@ class EventLoggerMiddleware(BaseMiddleware):
                 f"📍 <b>Sektor:</b> {chat_info}\n"
                 f"🔘 <b>Tombol:</b> <code>{event.data}</code>"
             )
-            await send_log(bot, "INTERAKSI_TOMBOL", log_text)
+            # Non-blocking background log
+            asyncio.create_task(send_log(bot, "INTERAKSI_TOMBOL", log_text))
 
         return response
