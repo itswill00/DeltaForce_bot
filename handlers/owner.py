@@ -81,9 +81,9 @@ async def cmd_refresh(message: types.Message):
         # Give a small delay to ensure message is sent
         await asyncio.sleep(2)
         
-        # 3. SELF-RESTART (Process Replacement)
-        # Replaces current process with a new one using the same arguments
-        os.execv(sys.executable, [sys.executable] + sys.argv)
+        # 3. SELF-RESTART (Process Replacement with Handshake)
+        # We pass --restart [chat_id] [message_id] to the new process
+        os.execv(sys.executable, [sys.executable, sys.argv[0], "--restart", str(message.chat.id), str(status_msg.message_id)])
         
     except Exception as e:
         await status_msg.edit_text(f"❌ <b>Update Gagal:</b>\n<code>{str(e)}</code>")
