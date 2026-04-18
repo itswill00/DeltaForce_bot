@@ -25,7 +25,6 @@ from middlewares.registration import RegistrationMiddleware
 
 async def main():
     # 1. Setup Middlewares
-    # We keep the same middleware names to avoid breaking the router structure
     dp.update.outer_middleware(DbSessionMiddleware())
     dp.message.middleware(RegistrationMiddleware())
     dp.callback_query.middleware(RegistrationMiddleware())
@@ -49,13 +48,16 @@ async def main():
 
     logging.info(f"Delta Force Bot starting with JSON Persistence ({settings.local_db_path})...")
     
-    from utils.scheduler import lfg_garbage_collector, auto_intel_scheduler
+    from utils.scheduler import lfg_garbage_collector, auto_intel_scheduler, database_backup_scheduler
     from utils.news_updater import auto_news_fetcher
     
     # Background tasks
     asyncio.create_task(lfg_garbage_collector())
     asyncio.create_task(auto_intel_scheduler(bot))
     asyncio.create_task(auto_news_fetcher(bot))
+    
+    # CRITICAL: Data Protection
+    asyncio.create_task(database_backup_scheduler(bot))
 
     # Start polling
     await dp.start_polling(bot)
