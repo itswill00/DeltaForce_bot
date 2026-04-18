@@ -2,52 +2,53 @@ from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from services.user_service import UserService
-from utils.style_utils import get_header, get_footer, format_field
+from services.content_service import ContentService
+from utils.style_utils import get_header, get_footer, format_field, get_divider
 
 router = Router()
 
-CATALOG = {
-    "flair_recon": {"name": "Elite Recon Badge", "price": 500},
-    "flair_medic": {"name": "Field Surgeon Badge", "price": 500},
-    "flair_assault": {"name": "Vanguard Badge", "price": 500},
-    "flair_vet": {"name": "Season 1 Veteran", "price": 2000}
-}
-
 @router.message(Command("shop"))
 @router.callback_query(F.data == "main_shop")
-async def cmd_shop(event: types.Message | types.CallbackQuery, user_service: UserService):
+async def cmd_shop(event: types.Message | types.CallbackQuery, user_service: UserService, content_service: ContentService):
     is_callback = isinstance(event, types.CallbackQuery)
     message = event.message if is_callback else event
     user_id = event.from_user.id
     
     if message.chat.type != "private":
         bot_user = await event.bot.get_me()
-        text = "🛍️ <b>BURSA ITEM:</b> Toko hanya dapat diakses melalui chat pribadi."
+        text = "⌬ <b>BURSA ITEM:</b> Akses ditolak. Transaksi hanya diizinkan melalui saluran privat."
         builder = InlineKeyboardBuilder()
-        builder.button(text="🛒 Buka Toko (DM)", url=f"https://t.me/{bot_user.username}?start=shop")
+        builder.button(text="⌬ BUKA BURSA (DM)", url=f"https://t.me/{bot_user.username}?start=shop")
         await message.answer(text, reply_markup=builder.as_markup())
         return
 
     user_data = await user_service.get_user(user_id)
     if not user_data or not user_data.ign:
-        text = "❌ Silakan daftarkan Call-sign kamu terlebih dahulu sebelum berbelanja."
+        text = "❌ Silakan daftarkan Call-sign kamu terlebih dahulu sebelum mengakses bursa."
         builder = InlineKeyboardBuilder()
-        builder.button(text="🚀 DAFTAR SEKARANG", callback_data="start_register")
-        builder.button(text="🏠 MENU UTAMA", callback_data="main_menu")
+        builder.button(text="◈ DAFTAR SEKARANG", callback_data="start_register")
+        builder.button(text="◃ KEMBALI KE MENU", callback_data="main_menu")
         if is_callback: await event.message.edit_text(text, reply_markup=builder.as_markup())
         else: await event.answer(text, reply_markup=builder.as_markup())
         return
         
-    text = get_header("Bursa Item & Badge", "🛒")
-    text += format_field("SALDO KAMU", f"💰 {user_data.balance}")
-    text += "\nItem yang tersedia untuk ditukar:"
+    text = get_header("Bursa Item & Supply", "⌬")
+    text += format_field("SALDO KREDIT", f"{user_data.balance} Koin")
+    text += get_divider()
+    text += "Silakan pilih item yang tersedia:"
+    
+    catalog = await content_service.get_shop_items()
     
     builder = InlineKeyboardBuilder()
-    for item_id, item in CATALOG.items():
-        builder.button(text=f"🎖️ {item['name']} ({item['price']})", callback_data=f"buy_{item_id}")
+    for item_id, item in catalog.items():
+        builder.button(text=f"‣ {item['name']} ({item['price']})", callback_data=f"buy_{item_id}")
     
-    builder.button(text="🏠 KEMBALI KE MENU", callback_data="main_menu")
+    builder.button(text="🎒 BUKA INVENTORI", callback_data="shop_inventory")
+    builder.button(text="◃ MENU UTAMA", callback_data="main_menu")
     builder.adjust(1)
+    
+    from utils.style_utils import force_height
+    text = force_height(text, 12)
     
     if is_callback:
         await event.message.edit_text(text, reply_markup=builder.as_markup())
@@ -56,11 +57,14 @@ async def cmd_shop(event: types.Message | types.CallbackQuery, user_service: Use
         await event.answer(text, reply_markup=builder.as_markup())
 
 @router.callback_query(F.data.startswith("buy_"))
-async def process_buy(callback: types.CallbackQuery, user_service: UserService):
-    # Use replace to get the full ID even if it contains underscores
+async def process_buy(callback: types.CallbackQuery, user_service: UserService, content_service: ContentService):
     item_id = callback.data.replace("buy_", "")
-    item = CATALOG.get(item_id)
-    if not item: return
+    catalog = await content_service.get_shop_items()
+    item = catalog.get(item_id)
+    
+    if not item: 
+        await callback.answer("❌ Item tidak tersedia.", show_alert=True)
+        return
         
     user_data = await user_service.get_user(callback.from_user.id)
     if not user_data: return
@@ -71,12 +75,56 @@ async def process_buy(callback: types.CallbackQuery, user_service: UserService):
         
     owned_items = user_data.owned_items or []
     if item_id in owned_items:
-        await callback.answer("⚠️ Kamu sudah punya badge ini.", show_alert=True)
+        await callback.answer("⚠️ Kamu sudah punya item ini.", show_alert=True)
         return
         
     owned_items.append(item_id)
     await user_service.add_balance(callback.from_user.id, -item["price"])
     await user_service.update_user(callback.from_user.id, {"owned_items": owned_items})
     
-    await callback.answer(f"✅ Berhasil! {item['name']} telah ditambahkan ke profil.", show_alert=True)
-    await cmd_shop(callback, user_service)
+    await callback.answer(f"✅ Berhasil! {item['name']} telah ditambahkan ke tas kamu.", show_alert=True)
+    await cmd_shop(callback, user_service, content_service)
+
+@router.callback_query(F.data == "shop_inventory")
+async def shop_inventory(callback: types.CallbackQuery, user_service: UserService, content_service: ContentService):
+    user_data = await user_service.get_user(callback.from_user.id)
+    catalog = await content_service.get_shop_items()
+    
+    text = get_header("Inventori Personel", "🎒")
+    owned = user_data.owned_items or []
+    
+    if not owned:
+        text += "<i>Tas kamu kosong. Beli item di Bursa untuk mengisinya.</i>"
+        builder = InlineKeyboardBuilder()
+    else:
+        text += "Pilih badge untuk digunakan (Equip) di profil utama:\n\n"
+        builder = InlineKeyboardBuilder()
+        for item_id in owned:
+            item_info = catalog.get(item_id)
+            if item_info:
+                name = item_info.get("name", item_id)
+                # Check if equipped
+                mark = "✅ " if user_data.equipped_badge == item_id else "‣ "
+                builder.button(text=f"{mark}{name}", callback_data=f"equip_{item_id}")
+    
+    builder.button(text="◃ KEMBALI KE BURSA", callback_data="main_shop")
+    builder.adjust(1)
+    
+    from utils.style_utils import force_height
+    text = force_height(text, 12)
+    
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("equip_"))
+async def process_equip(callback: types.CallbackQuery, user_service: UserService, content_service: ContentService):
+    item_id = callback.data.replace("equip_", "")
+    user_data = await user_service.get_user(callback.from_user.id)
+    
+    if item_id not in (user_data.owned_items or []):
+        await callback.answer("Kamu tidak memiliki item ini.", show_alert=True)
+        return
+        
+    await user_service.update_user(callback.from_user.id, {"equipped_badge": item_id})
+    await callback.answer("✅ Item digunakan!", show_alert=True)
+    await shop_inventory(callback, user_service, content_service)

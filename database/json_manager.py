@@ -24,7 +24,8 @@ class DeltaJSONDB:
             },
             "content": {
                 "weapons": {},
-                "maps": {}
+                "maps": {},
+                "shop": {}
             }
         }
         self._load_from_disk()

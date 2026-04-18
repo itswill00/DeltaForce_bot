@@ -17,6 +17,7 @@ class UserDTO:
         self.last_login = data.get("last_login")
         self.is_admin = data.get("is_admin", False)
         self.owned_items = data.get("owned_items", [])
+        self.equipped_badge = data.get("equipped_badge", None)
 
     def get(self, key, default=None):
         return getattr(self, key, default)

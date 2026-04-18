@@ -27,8 +27,9 @@ class AdminState(StatesGroup):
     waiting_for_mass_reward = State()
     waiting_for_blacklist_word = State()
     # Content CMS States
-    waiting_for_weapon_data = State() # JSON string or specific fields
+    waiting_for_weapon_data = State()
     waiting_for_map_data = State()
+    waiting_for_shop_data = State()
 
 def is_owner(user_id: int) -> bool:
     return int(user_id) == int(settings.owner_id)
@@ -83,11 +84,91 @@ async def admin_intel_cms(callback: types.CallbackQuery):
     builder = InlineKeyboardBuilder()
     builder.button(text="🔫 MANAJEMEN SENJATA", callback_data="admin_cms_weapons")
     builder.button(text="📍 MANAJEMEN PETA", callback_data="admin_cms_maps")
+    builder.button(text="⌬ MANAJEMEN BURSA", callback_data="admin_cms_shop")
     builder.button(text="◃ KEMBALI", callback_data="admin_dashboard")
     builder.adjust(1)
     
     await callback.message.edit_text(text, reply_markup=builder.as_markup())
     await callback.answer()
+
+@router.callback_query(F.data == "admin_cms_shop")
+async def admin_cms_shop(callback: types.CallbackQuery, content_service: ContentService):
+    if not is_owner(callback.from_user.id): return
+    shop_items = await content_service.get_shop_items()
+    
+    text = get_header("Manajemen Bursa", "⌬")
+    text += "Katalog aktif di bursa komunitas:\n\n"
+    
+    builder = InlineKeyboardBuilder()
+    for sid, sinfo in shop_items.items():
+        builder.button(text=f"‣ {sinfo.get('name', sid)}", callback_data=f"admin_shop_view_{sid}")
+    
+    builder.button(text="➕ TAMBAH BARANG", callback_data="admin_shop_add")
+    builder.button(text="◃ KEMBALI", callback_data="admin_intel_cms")
+    builder.adjust(2)
+    
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("admin_shop_view_"))
+async def admin_shop_view(callback: types.CallbackQuery, content_service: ContentService):
+    if not is_owner(callback.from_user.id): return
+    sid = callback.data.split("_")[3]
+    shop_items = await content_service.get_shop_items()
+    item = shop_items.get(sid)
+    
+    if not item:
+        await callback.answer("Item tidak ditemukan.", show_alert=True)
+        return
+        
+    text = get_header(f"Item: {item['name']}", "⌬")
+    text += format_field("HARGA", str(item.get('price', 0)))
+    text += format_field("TIPE", item.get('type', 'N/A'))
+    text += f"\n<i>\"{item.get('desc', 'N/A')}\"</i>\n"
+    
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🗑️ HAPUS", callback_data=f"admin_shop_del_{sid}")
+    builder.button(text="◃ KEMBALI", callback_data="admin_cms_shop")
+    builder.adjust(1)
+    
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("admin_shop_del_"))
+async def admin_shop_del(callback: types.CallbackQuery, content_service: ContentService):
+    if not is_owner(callback.from_user.id): return
+    sid = callback.data.split("_")[3]
+    await content_service.delete_shop_item(sid)
+    await callback.answer("Item dihapus dari bursa.", show_alert=True)
+    await admin_cms_shop(callback, content_service)
+
+@router.callback_query(F.data == "admin_shop_add")
+async def admin_shop_add_prompt(callback: types.CallbackQuery, state: FSMContext):
+    if not is_owner(callback.from_user.id): return
+    text = (
+        get_header("Input Item Baru", "⌬") +
+        "Kirimkan data item bursa dalam format JSON. Contoh:\n\n"
+        "<code>{ \"id\": \"booster_xp\", \"name\": \"Double XP\", \"price\": 1000, \"type\": \"booster\", \"desc\": \"XP 2x lipat!\" }</code>"
+    )
+    builder = InlineKeyboardBuilder().button(text="◃ BATAL", callback_data="admin_cancel_state")
+    await callback.message.answer(text, reply_markup=builder.as_markup())
+    await state.set_state(AdminState.waiting_for_shop_data)
+    await callback.answer()
+
+@router.message(AdminState.waiting_for_shop_data, ~F.text.startswith("/"))
+async def process_admin_shop_add(message: types.Message, state: FSMContext, content_service: ContentService):
+    if not is_owner(message.from_user.id): return
+    try:
+        import json
+        m = json.loads(message.text)
+        mid = m.pop("id", None)
+        if not mid or not m.get("name") or "price" not in m: raise ValueError("ID, Nama, dan Harga wajib ada.")
+        
+        await content_service.update_shop_item(mid, m)
+        await message.answer(f"✅ Item <b>{m['name']}</b> berhasil ditambahkan ke bursa.")
+        await state.clear()
+    except Exception as e:
+        await message.answer(f"❌ <b>Format Salah:</b>\n<code>{str(e)}</code>")
 
 @router.callback_query(F.data == "admin_cms_maps")
 async def admin_cms_maps(callback: types.CallbackQuery, content_service: ContentService):

@@ -4,9 +4,9 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from services.user_service import UserService
+from services.content_service import ContentService
 from utils.group_logger import send_log
 from utils.style_utils import get_header, get_footer
-from handlers.shop import CATALOG
 from views.profile_view import render_profile
 
 router = Router()
@@ -126,17 +126,16 @@ async def process_role_selection(callback: types.CallbackQuery, state: FSMContex
 
 @router.message(Command("profile"))
 @router.callback_query(F.data == "main_profile")
-async def cmd_profile(event: types.Message | types.CallbackQuery, user_service: UserService):
+async def cmd_profile(event: types.Message | types.CallbackQuery, user_service: UserService, content_service: ContentService):
     user_id = event.from_user.id
     is_callback = isinstance(event, types.CallbackQuery)
     message = event.message if is_callback else event
 
-    # Redirect if in Group
     if message.chat.type != "private":
         bot_user = await event.bot.get_me()
         text = "❌ <b>DATA PRIBADI:</b> Silakan cek profil Anda di chat pribadi agar tidak mengganggu grup."
         builder = InlineKeyboardBuilder()
-        builder.button(text="👤 Buka Profil (DM)", url=f"https://t.me/{bot_user.username}?start=profile")
+        builder.button(text="◇ PROFIL (DM)", url=f"https://t.me/{bot_user.username}?start=profile")
         await message.answer(text, reply_markup=builder.as_markup())
         return
 
@@ -144,26 +143,25 @@ async def cmd_profile(event: types.Message | types.CallbackQuery, user_service: 
     if not user_data or not user_data.ign:
         text = "❌ Profil tidak ditemukan. Silakan daftar terlebih dahulu menggunakan tombol di bawah."
         builder = InlineKeyboardBuilder()
-        builder.button(text="🚀 Daftar Sekarang", callback_data="start_register")
+        builder.button(text="◈ DAFTAR SEKARANG", callback_data="start_register")
         builder.button(text="◃ KEMBALI KE MENU", callback_data="main_menu")
-        
-        if is_callback:
-            await event.message.edit_text(text, reply_markup=builder.as_markup())
-        else:
-            await event.answer(text, reply_markup=builder.as_markup())
+        if is_callback: await event.message.edit_text(text, reply_markup=builder.as_markup())
+        else: await event.answer(text, reply_markup=builder.as_markup())
         return
         
-    owned_ids = user_data.owned_items or []
-    badges = []
-    for oid in owned_ids:
-        if oid in CATALOG:
-            badges.append(CATALOG[oid]["name"])
+    equipped_name = None
+    if user_data.equipped_badge:
+        shop_items = await content_service.get_shop_items()
+        badge_info = shop_items.get(user_data.equipped_badge)
+        if badge_info:
+            equipped_name = badge_info.get("name")
     
-    # Use the new View Layer
-    profile_text = render_profile(user_data, badges)
+    profile_text = render_profile(user_data, equipped_name)
     
     builder = InlineKeyboardBuilder()
+    builder.button(text="🎒 INVENTORI", callback_data="shop_inventory")
     builder.button(text="◃ KEMBALI KE MENU", callback_data="main_menu")
+    builder.adjust(1)
     
     if is_callback:
         await event.message.edit_text(profile_text, reply_markup=builder.as_markup())
