@@ -38,3 +38,22 @@ class SystemService:
             count += 1
         await self.db.save(data)
         return count
+
+    async def get_banner(self, banner_key: str):
+        """Returns banner URL from DB or falls back to config."""
+        from config import settings
+        data = await self.db.get_all()
+        banners = data["system"].get("banners", {})
+        
+        # Fallback logic
+        db_banner = banners.get(banner_key)
+        if db_banner: return db_banner
+        
+        return getattr(settings, f"banner_{banner_key}", settings.banner_main)
+
+    async def set_banner(self, banner_key: str, url: str):
+        """Updates a specific banner URL in DB."""
+        data = await self.db.get_all()
+        if "banners" not in data["system"]: data["system"]["banners"] = {}
+        data["system"]["banners"][banner_key] = url
+        await self.db.save(data)

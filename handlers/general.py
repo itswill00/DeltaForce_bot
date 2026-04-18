@@ -3,6 +3,7 @@ from aiogram.filters import CommandStart, Command, ChatMemberUpdatedFilter, JOIN
 from aiogram.types import ChatMemberUpdated, InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from services.user_service import UserService
+from services.system_service import SystemService
 from config import settings
 from utils.style_utils import get_header, get_footer, force_height
 from views.dashboard_view import render_dashboard
@@ -54,26 +55,27 @@ def get_group_command_kb(bot_username: str):
     return builder.as_markup()
 
 @router.message(Command("help"))
-async def cmd_help(message: types.Message):
+async def cmd_help(message: types.Message, system_service: SystemService):
     if message.chat.type != "private": return
+    banner = await system_service.get_banner("main")
     text = get_header("Pusat Bantuan", "◇")
     text += (
         "Selamat datang di panduan navigasi Delta Force Hub. Berikut perintah yang tersedia:\n\n"
         "<b>◇ Akun & Profil</b>\n"
-        "• <code>/register</code> - Pendaftaran profil operator.\n"
-        "• <code>/profile</code> - Informasi level dan statistik.\n"
-        "• <code>/vouch</code> - Memberikan reputasi ke rekan tim.\n\n"
+        "• <code>/register</code> - Profil operator.\n"
+        "• <code>/profile</code> - Level & statistik.\n"
+        "• <code>/vouch</code> - Reputasi rekan.\n\n"
         "<b>▣ Aktivitas Grup</b>\n"
-        "• <code>/mabar</code> - Mencari teman untuk bermain bareng.\n"
-        "• <code>/trivia</code> - Simulasi pengetahuan berhadiah koin.\n"
-        "• <code>/leaderboard</code> - Papan peringkat operator.\n\n"
+        "• <code>/mabar</code> - Cari teman.\n"
+        "• <code>/trivia</code> - Kuis koin.\n"
+        "• <code>/leaderboard</code> - Papan peringkat.\n\n"
         "<b>⬡ Lainnya</b>\n"
         "• <code>/op</code> - Database kemampuan operator.\n"
         "• <code>/menu</code> - Kembali ke menu utama."
     )
     builder = InlineKeyboardBuilder()
     builder.button(text="◃ MENU UTAMA", callback_data="main_menu")
-    await message.answer_photo(photo=settings.banner_main, caption=text, reply_markup=builder.as_markup())
+    await message.answer_photo(photo=banner, caption=text, reply_markup=builder.as_markup())
 
 @router.callback_query(F.data == "close_msg")
 async def process_close_msg(callback: types.CallbackQuery):
@@ -83,20 +85,20 @@ async def process_close_msg(callback: types.CallbackQuery):
 
 @router.message(CommandStart())
 @router.message(Command("menu", "dashboard"))
-async def cmd_start(message: types.Message, user_service: UserService, command: CommandStart = None):
+async def cmd_start(message: types.Message, user_service: UserService, system_service: SystemService, command: CommandStart = None):
     bot_user = await message.bot.get_me()
     user_id = message.from_user.id
+    banner = await system_service.get_banner("main")
     
     if message.chat.type in ["group", "supergroup"]:
         text = get_header("Hub Taktis Aktif", "◈")
         text += f"Selamat datang di Hub Komunitas <b>{message.chat.title}</b>.\n\nGunakan perintah di bawah untuk memulai koordinasi skuad:"
-        await message.answer_photo(photo=settings.banner_main, caption=text, reply_markup=get_group_command_kb(bot_user.username))
+        await message.answer_photo(photo=banner, caption=text, reply_markup=get_group_command_kb(bot_user.username))
         return
         
     user_data = await user_service.get_user(user_id)
     is_reg = user_data and user_data.ign
     
-    # Handle Deep Linking
     if command and hasattr(command, 'args') and command.args:
         arg = command.args.strip().lower()
         if arg == "reg":
@@ -109,24 +111,25 @@ async def cmd_start(message: types.Message, user_service: UserService, command: 
             await cmd_profile(message, user_service, ContentService())
             return
         elif arg == "help":
-            await cmd_help(message)
+            await cmd_help(message, system_service)
             return
 
     text = render_dashboard(user_data, is_reg, page=1)
-    await message.answer_photo(photo=settings.banner_main, caption=text, reply_markup=get_dashboard_kb(user_id=user_id, is_registered=is_reg))
+    await message.answer_photo(photo=banner, caption=text, reply_markup=get_dashboard_kb(user_id=user_id, is_registered=is_reg))
 
 @router.callback_query(F.data == "main_menu")
 @router.callback_query(F.data == "main_page_1")
-async def process_main_menu(callback: types.CallbackQuery, user_service: UserService):
+async def process_main_menu(callback: types.CallbackQuery, user_service: UserService, system_service: SystemService):
     user_data = await user_service.get_user(callback.from_user.id)
     is_reg = user_data and user_data.ign
     text = render_dashboard(user_data, is_reg, page=1)
     
-    # Check if message is a photo message
     if callback.message.photo:
         await callback.message.edit_caption(caption=text, reply_markup=get_dashboard_kb(user_id=callback.from_user.id, is_registered=is_reg, page=1))
     else:
-        await callback.message.edit_text(text, reply_markup=get_dashboard_kb(user_id=callback.from_user.id, is_registered=is_reg, page=1))
+        banner = await system_service.get_banner("main")
+        await callback.message.answer_photo(photo=banner, caption=text, reply_markup=get_dashboard_kb(user_id=callback.from_user.id, is_registered=is_reg, page=1))
+        await callback.message.delete()
     await callback.answer()
 
 @router.callback_query(F.data == "main_page_2")
@@ -145,18 +148,18 @@ async def process_main_page_2(callback: types.CallbackQuery, user_service: UserS
     await callback.answer()
 
 @router.message(Command("cmd", "gmenu"))
-async def cmd_group_menu(message: types.Message):
+async def cmd_group_menu(message: types.Message, system_service: SystemService):
     if message.chat.type not in ["group", "supergroup"]: return
     bot_user = await message.bot.get_me()
+    banner = await system_service.get_banner("main")
     text = get_header("Menu Grup", "▣") + "Pilih aksi cepat untuk grup ini:"
-    await message.answer_photo(photo=settings.banner_main, caption=text, reply_markup=get_group_command_kb(bot_user.username))
+    await message.answer_photo(photo=banner, caption=text, reply_markup=get_group_command_kb(bot_user.username))
 
 @router.callback_query(F.data == "main_help")
 async def process_main_help(callback: types.CallbackQuery):
     if callback.message.chat.type != "private":
         await callback.answer("Panduan lengkap tersedia di chat pribadi.", show_alert=True)
         return
-    # Redirect to help but keep photo
     text = get_header("Pusat Bantuan", "◇")
     text += (
         "Selamat datang di panduan navigasi Delta Force Hub. Berikut perintah yang tersedia:\n\n"

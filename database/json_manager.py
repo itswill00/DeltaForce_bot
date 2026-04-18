@@ -20,7 +20,8 @@ class DeltaJSONDB:
                 "event_multiplier": 1.0,
                 "total_broadcasts": 0,
                 "blacklist": [],
-                "ad_whitelist": []
+                "ad_whitelist": [],
+                "banners": {}
             },
             "content": {
                 "weapons": {},

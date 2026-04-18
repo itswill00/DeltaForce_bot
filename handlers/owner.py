@@ -30,6 +30,7 @@ class AdminState(StatesGroup):
     waiting_for_weapon_data = State()
     waiting_for_map_data = State()
     waiting_for_shop_data = State()
+    waiting_for_banner_url = State()
 
 def is_owner(user_id: int) -> bool:
     return int(user_id) == int(settings.owner_id)
@@ -39,21 +40,71 @@ def get_admin_dashboard_kb(maintenance_on: bool):
     # Row 1: Users
     builder.button(text="🔍 CARI PERSONEL", callback_data="admin_search_user")
     builder.button(text="🎁 HADIAH MASSAL", callback_data="admin_mass_reward_prompt")
-    # Row 2: Content & Security
+    # Row 2: Content & Visual
     builder.button(text="📂 INTEL CMS", callback_data="admin_intel_cms")
+    builder.button(text="🖼️ VISUAL CMS", callback_data="admin_visual_cms")
+    # Row 3: Security & Groups
     builder.button(text="🛡️ SECURITY HUB", callback_data="admin_security_hub")
-    # Row 3: Groups & System
     builder.button(text="🌐 SEKTOR GRUP", callback_data="admin_list_groups")
+    # Row 4: Audit & Maintenance
     builder.button(text="📋 AUDIT DATABASE", callback_data="admin_audit_db")
-    # Row 4: Maintenance Toggle
     m_text = "🔴 MATIKAN MAINTENANCE" if maintenance_on else "🟢 AKTIFKAN MAINTENANCE"
     builder.button(text=m_text, callback_data="admin_toggle_maint")
     # Row 5: Info & Exit
     builder.button(text="⚙️ SYSTEM INFO", callback_data="admin_sys_info")
     builder.button(text="◃ KEMBALI", callback_data="main_page_1")
     
-    builder.adjust(2, 2, 2, 1, 2)
+    builder.adjust(2, 2, 2, 2, 2)
     return builder.as_markup()
+
+@router.callback_query(F.data == "admin_visual_cms")
+async def admin_visual_cms(callback: types.CallbackQuery, system_service: SystemService):
+    if not is_owner(callback.from_user.id): return
+    text = get_header("Visual Management", "🖼️")
+    text += "Kelola banner visual markas besar:\n\n"
+    
+    banners = ["main", "profile", "lfg", "shop", "intel"]
+    builder = InlineKeyboardBuilder()
+    for b in banners:
+        builder.button(text=f"‣ BANNER {b.upper()}", callback_data=f"admin_banner_edit_{b}")
+    
+    builder.button(text="◃ KEMBALI", callback_data="admin_dashboard")
+    builder.adjust(1)
+    await callback.message.edit_caption(caption=text, reply_markup=builder.as_markup())
+    await callback.answer()
+
+@router.callback_query(F.data.startswith("admin_banner_edit_"))
+async def admin_banner_edit_prompt(callback: types.CallbackQuery, state: FSMContext, system_service: SystemService):
+    if not is_owner(callback.from_user.id): return
+    key = callback.data.split("_")[3]
+    current_url = await system_service.get_banner(key)
+    
+    await state.update_data(banner_key=key)
+    text = (
+        get_header(f"Edit Banner: {key.upper()}", "🖼️") +
+        f"<b>URL Saat Ini:</b>\n<code>{current_url}</code>\n\n"
+        "Kirimkan <b>Link Gambar (URL)</b> baru untuk menggantinya:"
+    )
+    builder = InlineKeyboardBuilder().button(text="◃ BATAL", callback_data="admin_visual_cms")
+    await callback.message.edit_caption(caption=text, reply_markup=builder.as_markup())
+    await state.set_state(AdminState.waiting_for_banner_url)
+    await callback.answer()
+
+@router.message(AdminState.waiting_for_banner_url, ~F.text.startswith("/"))
+async def process_admin_banner_update(message: types.Message, state: FSMContext, system_service: SystemService):
+    if not is_owner(message.from_user.id): return
+    url = message.text.strip()
+    
+    if not url.startswith("http"):
+        await message.answer("❌ Format URL tidak valid.")
+        return
+        
+    s_data = await state.get_data()
+    key = s_data['banner_key']
+    
+    await system_service.set_banner(key, url)
+    await message.answer(f"✅ Banner <b>{key.upper()}</b> berhasil diperbarui secara instan.")
+    await state.clear()
 
 @router.callback_query(F.data == "admin_dashboard")
 async def admin_dashboard(callback: types.CallbackQuery, user_service: UserService):
