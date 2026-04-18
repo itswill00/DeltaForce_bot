@@ -1,49 +1,40 @@
-# 🛡️ Delta Force Community Bot
+# 🛡️ Delta Force Community Bot (Enterprise Edition)
 
 ![Python Version](https://img.shields.io/badge/python-3.9+-blue.svg)
 ![Aiogram Version](https://img.shields.io/badge/aiogram-3.4+-orange.svg)
-![Status](https://img.shields.io/badge/status-active-brightgreen.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Database](https://img.shields.io/badge/database-SQLAlchemy-green.svg)
+![Status](https://img.shields.io/badge/status-production-brightgreen.svg)
 
-Bot Telegram canggih yang dirancang khusus untuk menggembalakan dan meramaikan komunitas **Delta Force Indonesia**. Dilengkapi dengan fitur *Looking for Group* (LFG), sistem leveling RPG, dan ensiklopedia operator taktis.
+Bot Telegram **Enterprise-Grade** yang dirancang khusus untuk koordinasi komunitas **Delta Force Indonesia**. Dibangun dengan arsitektur modern yang mengedepankan stabilitas, performa tinggi, dan estetika taktis.
 
 ---
 
 ## ✨ Fitur Unggulan
 
-### 🕹️ Looking For Group (LFG) System
-Sistem utama untuk mempermudah pemain mencari tim (Mabar).
-*   **Mode Operasi:** Mendukung *Hazard Operation* (3 Pemain) dan *Havoc Warfare* (4 Pemain).
-*   **Real-time Update:** Panel lobi yang dinamis dengan tombol Join/Leave/Ping.
-*   **Auto-Reward:** Otomatis memberikan poin reputasi dan XP saat skuad penuh.
+### 🕹️ Advanced LFG (Looking For Group)
+Sistem koordinasi mabar yang presisi dan real-time.
+*   **Mode Operasi:** *Hazard Operation* (3 Pemain) & *Havoc Warfare* (4 Pemain).
+*   **Atomic Updates:** Menghindari race-condition saat join/leave secara bersamaan.
+*   **Smart PING:** Notifikasi khusus kepada member dengan role yang dibutuhkan.
 
-### 🎭 Profil & Gamification
-Ubah interaksi chat menjadi pengalaman RPG yang seru.
-*   **Sistem Role:** Pilih spesialisasi Anda (*Assault, Medic, Recon, Engineer*).
-*   **Leveling:** Dapatkan XP dari aktivitas mabar dan mini-game trivia.
-*   **Leaderboard:** Papan peringkat global untuk pemain paling aktif dan ahli trivia.
+### 🎭 Enterprise RPG & Profiling
+Ubah interaksi menjadi sistem leveling yang matang.
+*   **Dynamic Leveling:** Kalkulasi XP berbasis formula logaritmik (SQL-indexed).
+*   **Role Specialization:** *Assault, Medic, Recon, Engineer* dengan integrasi skill database.
+*   **Vouch System:** Reputasi antar personel yang tercatat secara permanen di database.
 
-### 📚 Tactical Database
-Ensiklopedia interaktif tepat di dalam Telegram.
-*   **Operator Dossier:** Lore, skill aktif, dan pasif lengkap untuk setiap operator.
-*   **Meta Loadout:** Rekomendasi senjata dan *attachment* paling efektif.
-*   **Intel Reports:** Berita otomatis tentang update game terbaru.
-
-### ⚖️ Anti-Spam & Management
-Fitur administrasi untuk menjaga ketertiban grup.
-*   **Automatic Clean-up:** Bot secara otomatis menghapus pesan log lama agar grup tetap bersih.
-*   **Broadcast System:** Mengirim pesan penting langsung ke seluruh member terdaftar.
+### 📊 Tactical Data Layer
+Penyimpanan data yang aman dan scalable.
+*   **SQL Persistence:** Menggunakan SQLAlchemy dengan dukungan SQLite/PostgreSQL.
+*   **Service Layer:** Pemisahan logika bisnis (XP, LFG) dari antarmuka Telegram.
+*   **Structured Logging:** Audit log lengkap untuk setiap aksi admin dan error sistem.
 
 ---
 
-## 🚀 Memulai (Instalasi)
+## 🚀 Instalasi Cepat
 
-### 📋 Prasyarat
-*   Python 3.9 atau versi lebih tinggi.
-*   Bot Token dari [@BotFather](https://t.me/BotFather).
-
-### 🛠️ Setup Project
-1.  **Clone Repository:**
+### 🛠️ Langkah-langkah Setup
+1.  **Clone & Masuk ke Direktori:**
     ```bash
     git clone https://github.com/itswill00/DeltaForce_bot.git
     cd DeltaForce_bot
@@ -55,9 +46,11 @@ Fitur administrasi untuk menjaga ketertiban grup.
     ```
 
 3.  **Konfigurasi Environment:**
-    Salin file contoh konfigurasi dan isi dengan data Anda.
-    *   `bot_token`: Token dari Telegram.
-    *   `owner_id`: ID Telegram Anda (untuk akses fitur elit).
+    Salin file `.env.sample` menjadi `.env` dan isi token Anda.
+    ```bash
+    cp .env.sample .env
+    # Buka .env dan isi BOT_TOKEN Anda
+    ```
 
 4.  **Jalankan Bot:**
     ```bash
@@ -66,25 +59,27 @@ Fitur administrasi untuk menjaga ketertiban grup.
 
 ---
 
-## 🛠️ Arsitektur Teknis
-*   **Backend:** Python 3.10+ dengan `aiogram`.
-*   **Database:** JSON-based persistent storage dengan *atomic replacement* untuk mencegah kehilangan data.
-*   **Memory Management:** Sistem caching O(1) untuk akses profil pengguna yang super cepat.
+## 🛠️ Arsitektur Teknis (Modern Stack)
+*   **Framework:** `aiogram 3.x` (Asynchronous Telegram Framework)
+*   **Database ORM:** `SQLAlchemy 2.0` with `aiosqlite`
+*   **Data Validation:** `Pydantic v2` & `pydantic-settings`
+*   **Architecture Pattern:** Service-Oriented Architecture (SOA)
+*   **Logging:** Structured Console & File Logging
 
 ---
 
 ## 🎮 Perintah Utama
-*   `/register` - Daftar profil dan pilih role operator.
-*   `/profile` - Lihat kartu identitas Delta Force Anda.
-*   `/mabar` - Buka lobi deployment baru.
-*   `/leaderboard` - Lihat siapa pemuncak klasemen.
-*   `/op` - Katalog operator lengkap.
-*   `/sys` - (Owner) Monitoring kesehatan bot.
+*   `/register` - Inisialisasi profil operator (Private Chat).
+*   `/profile` - Lihat kartu identitas taktis & statistik.
+*   `/mabar` - Buka deployment lobi baru di grup.
+*   `/leaderboard` - Papan peringkat global (XP/Mabar).
+*   `/vouch` - Berikan reputasi ke rekan satu tim (Reply pesan).
+*   `/menu` - Dashboard utama navigasi hub.
 
 ---
 
-## 🤝 Kontribusi
-Kontribusi sangat terbuka! Silakan kirimkan *Pull Request* atau buat *Issue* jika menemukan bug atau ingin menambahkan fitur baru.
+## 🤝 Kontribusi & Lisensi
+Proyek ini bersifat Open Source. Silakan lakukan *Pull Request* untuk peningkatan fitur.
 
 **Delta Force Indonesia Open Source Project**
-*"No one left behind, mission first."*
+*"Tactical Precision, Community Driven."*
