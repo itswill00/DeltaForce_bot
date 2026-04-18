@@ -18,6 +18,11 @@ def get_dashboard_kb(user_id: int, is_registered: bool = False, page: int = 1):
     if not is_registered:
         builder.button(text="◈ DAFTAR SEKARANG", callback_data="start_register")
         builder.button(text="◇ PANDUAN PENGGUNAAN", callback_data="main_help")
+        
+        # Invisible Command Center for Owner (Unregistered)
+        if user_id == settings.owner_id:
+            builder.button(text="◈ COMMAND CENTER", callback_data="admin_dashboard")
+            
         builder.adjust(1)
     else:
         if page == 1:
@@ -26,6 +31,11 @@ def get_dashboard_kb(user_id: int, is_registered: bool = False, page: int = 1):
             builder.button(text="⬡ DATA INTEL", callback_data="main_intel")
             builder.button(text="⬢ LOADOUTS", callback_data="main_meta")
             builder.button(text="▹ MENU LAIN", callback_data="main_page_2")
+            
+            # Invisible Command Center for Owner (Registered, Page 1)
+            if user_id == settings.owner_id:
+                builder.button(text="◈ COMMAND CENTER", callback_data="admin_dashboard")
+                
             builder.adjust(2, 2, 1)
         else:
             builder.button(text="◈ PERINGKAT", callback_data="main_leaderboard")
@@ -34,11 +44,7 @@ def get_dashboard_kb(user_id: int, is_registered: bool = False, page: int = 1):
             builder.button(text="🚑 OPERATOR", callback_data="main_operator")
             builder.button(text="◃ KEMBALI", callback_data="main_page_1")
             
-            # Invisible Command Center for Owner
-            if user_id == settings.owner_id:
-                builder.button(text="◈ COMMAND CENTER", callback_data="admin_dashboard")
-                
-            builder.adjust(2, 2, 1, 1)
+            builder.adjust(2, 2, 1)
             
     return builder.as_markup()
 
