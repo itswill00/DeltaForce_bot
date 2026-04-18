@@ -22,10 +22,12 @@ dp = Dispatcher()
 # Middlewares
 from middlewares.db_session import DbSessionMiddleware
 from middlewares.registration import RegistrationMiddleware
+from middlewares.event_logger import EventLoggerMiddleware
 
 async def main():
     # 1. Setup Middlewares
     dp.update.outer_middleware(DbSessionMiddleware())
+    dp.update.outer_middleware(EventLoggerMiddleware()) # Log every event
     dp.message.middleware(RegistrationMiddleware())
     dp.callback_query.middleware(RegistrationMiddleware())
     
