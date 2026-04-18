@@ -15,7 +15,6 @@ router = Router()
 
 def get_dashboard_kb(user_id: int, is_registered: bool = False, page: int = 1):
     builder = InlineKeyboardBuilder()
-    
     is_owner = int(user_id) == int(settings.owner_id)
     
     if not is_registered:
@@ -34,20 +33,16 @@ def get_dashboard_kb(user_id: int, is_registered: bool = False, page: int = 1):
             
             if is_owner:
                 builder.button(text="◈ COMMAND CENTER", callback_data="admin_dashboard")
+                builder.adjust(2, 2, 2) # Rapi: 3 baris x 2 tombol
             else:
-                # Add an empty button placeholder to keep the grid 2x3
-                builder.button(text=" ", callback_data="none")
-                
-            builder.adjust(2) # 2x3 Grid
+                builder.adjust(2, 2, 1) # Rapi: 2 baris x 2 tombol + 1 tombol lebar
         else:
             builder.button(text="◈ PERINGKAT", callback_data="main_leaderboard")
             builder.button(text="⌬ BURSA ITEM", callback_data="main_shop")
             builder.button(text="⌬ SIMULASI", callback_data="main_trivia")
             builder.button(text="◇ OPERATOR", callback_data="main_operator")
             builder.button(text="◃ KEMBALI", callback_data="main_page_1")
-            builder.button(text=" ", callback_data="none") # Placeholder for grid symmetry
-            
-            builder.adjust(2) # 2x3 Grid
+            builder.adjust(2, 2, 1) # Rapi: 2 baris x 2 tombol + 1 tombol lebar
             
     return builder.as_markup()
 
@@ -63,7 +58,6 @@ def get_group_command_kb(bot_username: str):
 @router.message(Command("help"))
 async def cmd_help(message: types.Message):
     if message.chat.type != "private": return
-
     text = get_header("Pusat Bantuan", "◇")
     text += (
         "Selamat datang di panduan navigasi Delta Force Hub. Berikut perintah yang tersedia:\n\n"
@@ -117,7 +111,8 @@ async def cmd_start(message: types.Message, user_service: UserService, command: 
             return
         elif arg == "profile":
             from handlers.profile import cmd_profile
-            await cmd_profile(message, user_service)
+            from services.content_service import ContentService
+            await cmd_profile(message, user_service, ContentService())
             return
         elif arg == "help":
             await cmd_help(message)
@@ -138,7 +133,8 @@ async def cmd_start(message: types.Message, user_service: UserService, command: 
             "Pilih layanan yang Anda butuhkan di bawah ini:"
         )
         
-    text += "\n" + get_footer()
+    from utils.style_utils import force_height
+    text = force_height(text + "\n" + get_footer(), 10) # Optimized height
     await message.answer(text, reply_markup=get_dashboard_kb(user_id=user_id, is_registered=is_reg))
 
 @router.callback_query(F.data == "main_menu")
