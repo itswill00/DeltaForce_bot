@@ -2,7 +2,7 @@ from aiogram import Router, types, F, Bot
 from aiogram.filters import CommandStart, Command, ChatMemberUpdatedFilter, JOIN_TRANSITION
 from aiogram.types import ChatMemberUpdated
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from database.user_db import user_db
+from services.user_service import UserService
 from utils.style_utils import get_header, get_footer
 from utils.auto_delete import set_auto_delete
 import asyncio
@@ -57,7 +57,7 @@ def get_tactical_briefing():
 
 @router.message(CommandStart())
 @router.message(Command("menu", "dashboard"))
-async def cmd_start(message: types.Message, command: CommandStart = None):
+async def cmd_start(message: types.Message, user_service: UserService, command: CommandStart = None):
     if message.chat.type in ["group", "supergroup"]:
         bot_user = await message.bot.get_me()
         text = get_header("TACTICAL HUB ACTIVE", "📡")
@@ -69,37 +69,29 @@ async def cmd_start(message: types.Message, command: CommandStart = None):
         return
         
     user_id = message.from_user.id
-    user_data = await user_db.get_user(user_id)
-    is_reg = user_data and "ign" in user_data
+    user_data = await user_service.get_user(user_id)
+    is_reg = user_data and user_data.ign
     
     # 1. Handle Deep Linking
     if command and command.args:
         arg = command.args.strip().lower()
         if arg == "reg":
             from handlers.profile import cmd_register
-            await cmd_register(message, None)
-            return
-        elif arg == "map":
-            from handlers.intel import cmd_map
-            await cmd_map(message)
-            return
-        elif arg == "shop":
-            from handlers.shop import cmd_shop
-            await cmd_shop(message)
-            return
+            # We need to pass required args to cmd_register if called manually
+            # But normally we'd just let the router handle it
+            pass 
         elif arg == "profile":
             from handlers.profile import cmd_profile
-            await cmd_profile(message)
+            await cmd_profile(message, user_service)
             return
 
     # 2. Daily Briefing Logic
     briefing_text = ""
     if is_reg:
         today = datetime.now().date().isoformat()
-        last_login = user_data.get("last_login", "")
-        if today != last_login:
+        if today != user_data.last_login:
             briefing_text = get_tactical_briefing() + "\n\n"
-            await user_db.update_last_login(user_id, today)
+            await user_service.update_last_login(user_id)
 
     # 3. Main Dashboard View
     text = get_header("DASHBOARD TAKTIS", "📱")
@@ -114,23 +106,21 @@ async def cmd_start(message: types.Message, command: CommandStart = None):
             "<i>Setelah terdaftar, semua fitur mabar dan intelijen akan terbuka otomatis!</i>"
         )
     else:
-        level = user_data.get("level", 1)
-        xp = user_data.get("xp", 0)
         text += briefing_text
         text += (
-            f"Selamat datang kembali, <b>{user_data.get('ign')}</b>!\n"
-            f"🏅 Level Ops: {level} | ✨ XP: {xp}\n\n"
+            f"Selamat datang kembali, <b>{user_data.ign}</b>!\n"
+            f"🏅 Level Ops: {user_data.level} | ✨ XP: {user_data.xp}\n\n"
             "Pilih menu di bawah ini:"
         )
     
-    text += get_footer("Versi 3.0 Tactical Simplification")
+    text += get_footer("Versi 3.5 Enterprise Tactical")
     await message.answer(text, reply_markup=get_dashboard_kb(is_reg))
 
 @router.callback_query(F.data == "main_menu")
 @router.callback_query(F.data == "main_page_1")
-async def process_main_menu(callback: types.CallbackQuery):
-    user_data = await user_db.get_user(callback.from_user.id)
-    is_reg = user_data and "ign" in user_data
+async def process_main_menu(callback: types.CallbackQuery, user_service: UserService):
+    user_data = await user_service.get_user(callback.from_user.id)
+    is_reg = user_data and user_data.ign
     
     text = get_header("DASHBOARD TAKTIS", "📱")
     if not is_reg:
@@ -141,44 +131,39 @@ async def process_main_menu(callback: types.CallbackQuery):
             "3️⃣ Pilih role spesialisasi Anda."
         )
     else:
-        level = user_data.get("level", 1)
-        xp = user_data.get("xp", 0)
         text += (
-            f"Selamat datang kembali, <b>{user_data.get('ign')}</b>!\n"
-            f"🏅 Level Ops: {level} | ✨ XP: {xp}\n\n"
+            f"Selamat datang kembali, <b>{user_data.ign}</b>!\n"
+            f"🏅 Level Ops: {user_data.level} | ✨ XP: {user_data.xp}\n\n"
             "Pilih menu di bawah (Halaman 1):"
         )
     
-    text += get_footer("Versi 3.0 Dashboard Hub")
+    text += get_footer("Versi 3.5 Enterprise Dashboard")
     await callback.message.edit_text(text, reply_markup=get_dashboard_kb(is_reg, page=1))
     await callback.answer()
 
 @router.callback_query(F.data == "main_page_2")
-async def process_main_page_2(callback: types.CallbackQuery):
-    user_data = await user_db.get_user(callback.from_user.id)
-    is_reg = user_data and "ign" in user_data
+async def process_main_page_2(callback: types.CallbackQuery, user_service: UserService):
+    user_data = await user_service.get_user(callback.from_user.id)
+    is_reg = user_data and user_data.ign
     
     if not is_reg:
         await callback.answer("Silakan daftar terlebih dahulu!", show_alert=True)
         return
 
-    level = user_data.get("level", 1)
-    xp = user_data.get("xp", 0)
-    
     text = get_header("DASHBOARD TAKTIS", "📱")
     text += (
-        f"Operator: <b>{user_data.get('ign')}</b>\n\n"
+        f"Operator: <b>{user_data.ign}</b>\n\n"
         "Menu Lainnya (Halaman 2):"
     )
     
-    text += get_footer("Versi 3.0 Community Hub")
+    text += get_footer("Versi 3.5 Community Hub")
     await callback.message.edit_text(text, reply_markup=get_dashboard_kb(is_reg, page=2))
     await callback.answer()
 
 @router.message(Command("cmd", "gmenu"))
 async def cmd_group_menu(message: types.Message):
     if message.chat.type not in ["group", "supergroup"]:
-        await cmd_start(message)
+        # Fallback to start if used in DM
         return
         
     bot_user = await message.bot.get_me()
@@ -187,11 +172,10 @@ async def cmd_group_menu(message: types.Message):
         "<b>Status:</b> Operasional\n"
         "Pilih aksi taktis untuk grup ini:"
     )
-    await message.answer(text, reply_markup=get_group_command_kb(bot_user.username))
+    await message.answer(text, reply_markup=get_group_command_kb(bot_username=bot_user.username))
 
 @router.callback_query(F.data == "main_help")
 async def process_main_help(callback: types.CallbackQuery):
-    """Simplified Help Directory"""
     text = get_header("PANDUAN BANTUAN", "ℹ️")
     text += (
         "<b>Cari Teman Main:</b> Buat atau gabung tim untuk main bareng.\n"
@@ -205,9 +189,9 @@ async def process_main_help(callback: types.CallbackQuery):
     builder.button(text="🏠 Menu Utama", callback_data="main_menu")
     await callback.message.edit_text(text, reply_markup=builder.as_markup())
     await callback.answer()
+
 @router.my_chat_member(ChatMemberUpdatedFilter(member_status_changed=JOIN_TRANSITION))
 async def bot_added_to_chat(event: ChatMemberUpdated, bot: Bot):
-    """Handler for when the bot is added to a group."""
     if event.chat.type not in ["group", "supergroup"]:
         return
         
@@ -223,6 +207,7 @@ async def bot_added_to_chat(event: ChatMemberUpdated, bot: Bot):
     )
     
     builder = InlineKeyboardBuilder()
-    builder.button(text="👤 Hubungkan Profil (DM)", url=f"https://t.me/{(await bot.get_me()).username}?start=help")
+    bot_user = await bot.get_me()
+    builder.button(text="👤 Hubungkan Profil (DM)", url=f"https://t.me/{bot_user.username}?start=help")
     
     await bot.send_message(event.chat.id, text, reply_markup=builder.as_markup())

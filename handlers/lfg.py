@@ -1,30 +1,24 @@
 from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from database.user_db import user_db
+from services.user_service import UserService
+from services.lfg_service import LfgService
 from utils.style_utils import get_header, get_footer
-import uuid
-import asyncio
 from utils.auto_delete import set_auto_delete
+import asyncio
 
 router = Router()
 
 @router.message(Command("mabar"))
 @router.callback_query(F.data == "main_mabar")
-async def cmd_mabar(event: types.Message | types.CallbackQuery):
+async def cmd_mabar(event: types.Message | types.CallbackQuery, user_service: UserService):
     is_callback = isinstance(event, types.CallbackQuery)
     message = event.message if is_callback else event
     
-    # Track group if in group
-    if message.chat.type != "private":
-        from database.group_db import group_db
-        await group_db.register_group(message.chat.id, message.chat.title)
-        await group_db.track_member(message.chat.id, event.from_user.id)
-    
     # Check registration
-    user_info = await user_db.get_user(event.from_user.id)
-    if not user_info or "ign" not in user_info:
-        text = "❌ AKSES DITOLAK: Anda harus /register profil sebelum bisa membuka lobi mabar."
+    user_info = await user_service.get_user(event.from_user.id)
+    if not user_info or not user_info.ign:
+        text = "❌ <b>AKSES DITOLAK:</b> Anda harus <code>/register</code> profil sebelum bisa membuka lobi mabar."
         builder = InlineKeyboardBuilder()
         builder.button(text="🚀 Daftar Sekarang", callback_data="start_register")
         builder.button(text="🏠 Menu Utama", callback_data="main_menu")
@@ -51,28 +45,13 @@ async def cmd_mabar(event: types.Message | types.CallbackQuery):
         await message.answer(text, reply_markup=builder.as_markup())
 
 @router.callback_query(F.data.startswith("lfghost_"))
-async def process_lfg_host(callback: types.CallbackQuery):
+async def process_lfg_host(callback: types.CallbackQuery, user_service: UserService, lfg_service: LfgService):
     lfg_type = callback.data.split("_")[1]
-    
-    user_info = await user_db.get_user(callback.from_user.id)
-    host_name = user_info.get("first_name", callback.from_user.first_name) if user_info else callback.from_user.first_name
-    
-    session_id = str(uuid.uuid4())[:8]
-    host_id = callback.from_user.id
+    user_info = await user_service.get_user(callback.from_user.id)
+    host_name = user_info.ign if user_info else callback.from_user.first_name
     
     max_p = 3 if lfg_type == "hazard" else 4
-    
-    session_data = {
-        "host_id": host_id,
-        "host_name": host_name,
-        "players": [host_id],
-        "max_players": max_p,
-        "status": "open",
-        "lfg_type": lfg_type,
-        "timestamp": __import__('time').time()
-    }
-    
-    await lfg_db.update_session(session_id, session_data)
+    session = await lfg_service.create_session(callback.from_user.id, host_name, lfg_type, max_p)
     
     from utils.group_logger import send_log
     tipe_str = "Hazard Operation" if lfg_type == "hazard" else "Havoc Warfare"
@@ -82,8 +61,7 @@ async def process_lfg_host(callback: types.CallbackQuery):
         f"<b>{host_name}</b> membuka LFG baru!\nMode: {tipe_str}"
     )
     
-    text, markup = await build_lfg_message(session_id, session_data)
-    # Delete the setup message and send the main LFG interface
+    text, markup = await build_lfg_message(session, user_service, callback.bot)
     try:
         await callback.message.delete()
     except:
@@ -92,23 +70,18 @@ async def process_lfg_host(callback: types.CallbackQuery):
     lfg_msg = await callback.message.answer(text, reply_markup=markup)
     await callback.answer("Penugasan disetujui.")
     
-    # Auto-cleanup for host message if in group
     if callback.message.chat.type != "private":
-        from database.group_db import group_db
-        group_info = await group_db.get_group(callback.message.chat.id)
-        if group_info and group_info.get("settings", {}).get("auto_cleanup", True):
-            asyncio.create_task(set_auto_delete(lfg_msg, None, 600)) # 10 minutes timeout
+        asyncio.create_task(set_auto_delete(lfg_msg, None, 600))
 
-async def build_lfg_message(session_id: str, session_data: dict):
-    player_count = len(session_data["players"])
-    max_p = session_data["max_players"]
-    status_text = "🟢 ACTIVE" if session_data["status"] == "open" else "🔴 DEPLOYED/CLOSED"
+async def build_lfg_message(session, user_service: UserService, bot):
+    player_count = len(session.players)
+    max_p = session.max_players
+    status_text = "🟢 ACTIVE" if session.status == "open" else "🔴 DEPLOYED"
     
-    lfg_type = session_data.get("lfg_type", "hazard")
-    tipe_str = "HAZARD OPERATION" if lfg_type == "hazard" else "HAVOC WARFARE"
-    icon = "☣️" if lfg_type == "hazard" else "⚔️"
+    tipe_str = "HAZARD OPERATION" if session.lfg_type == "hazard" else "HAVOC WARFARE"
+    icon = "☣️" if session.lfg_type == "hazard" else "⚔️"
     
-    text = get_header(f"DEPLOYMENT ORDER #{session_id.upper()}", icon)
+    text = get_header(f"DEPLOYMENT ORDER #{session.id.upper()}", icon)
     text += (
         f"<b>OPERASI:</b> {tipe_str}\n"
         f"<b>STATUS:</b> {status_text}\n"
@@ -117,13 +90,11 @@ async def build_lfg_message(session_id: str, session_data: dict):
         f"<b>MANIFES SKUAD:</b>\n"
     )
     
-    for i, pid in enumerate(session_data["players"]):
-        user_info = await user_db.get_user(pid)
-        is_host = " [LEADER]" if pid == session_data["host_id"] else ""
-        if user_info:
-            ign = user_info.get('ign', 'Unknown')
-            role = user_info.get('role', 'N/A')
-            text += f"{i+1}. <b>{ign}</b> ({role}){is_host}\n"
+    for i, pid in enumerate(session.players):
+        u = await user_service.get_user(pid)
+        is_host = " [LEADER]" if pid == session.host_id else ""
+        if u:
+            text += f"{i+1}. <b>{u.ign}</b> ({u.role}){is_host}\n"
         else:
             text += f"{i+1}. Operator-ID:{pid}{is_host}\n"
             
@@ -131,156 +102,73 @@ async def build_lfg_message(session_id: str, session_data: dict):
         text += f"{i+1}. [ 🔓 SLOT TERSEDIA ]\n"
     
     text += f"─" * 15 + "\n"
-    if session_data["status"] == "open":
+    if session.status == "open":
         text += "<i>Menunggu otorisasi skuad penuh untuk pendeploian...</i>"
     else:
         text += "<i>Unit telah dideploy ke area operasi.</i>"
 
     builder = InlineKeyboardBuilder()
+    if session.status == "open":
+        builder.button(text="➕ Gabung", callback_data=f"lfg_join_{session.id}")
+        builder.button(text="➖ Keluar", callback_data=f"lfg_leave_{session.id}")
+        builder.button(text="🔊 Ping", callback_data=f"lfg_ping_{session.id}")
     
-    if session_data["status"] == "open":
-        builder.button(text="➕ Gabung", callback_data=f"lfg_join_{session_id}")
-        builder.button(text="➖ Keluar", callback_data=f"lfg_leave_{session_id}")
-        builder.button(text="🔊 Ping", callback_data=f"lfg_ping_{session_id}")
-        
-        if callback.message.chat.type == "private":
-            builder.button(text="🏠 Menu", callback_data="main_menu")
-        else:
-            bot_user = await callback.bot.get_me()
-            builder.button(text="👤 Profil (DM)", url=f"https://t.me/{bot_user.username}?start=profile")
-    else:
-        if callback.message.chat.type == "private":
-            builder.button(text="🏠 Menu Utama", callback_data="main_menu")
-        else:
-            bot_user = await callback.bot.get_me()
-            builder.button(text="👤 Profil (DM)", url=f"https://t.me/{bot_user.username}?start=profile")
-        
+    bot_user = await bot.get_me()
+    builder.button(text="👤 Profil (DM)", url=f"https://t.me/{bot_user.username}?start=profile")
     builder.adjust(2)
+    
     return text, builder.as_markup()
 
 @router.callback_query(F.data.startswith("lfg_"))
-async def process_lfg(callback: types.CallbackQuery):
-    action = callback.data.split("_")[1]
-    if action == "noop":
-        await callback.answer("Sesi ini sudah ditutup/penuh.", show_alert=True)
-        return
-        
-    session_id = callback.data.split("_")[2]
-    user_id = callback.from_user.id
+async def process_lfg_action(callback: types.CallbackQuery, user_service: UserService, lfg_service: LfgService):
+    parts = callback.data.split("_")
+    action = parts[1]
+    session_id = parts[2]
     
-    session_data = await lfg_db.get_session(session_id)
-    if not session_data:
-        await callback.answer("Sesi mabar tidak ditemukan atau sudah kadaluarsa.", show_alert=True)
-        return
-        
-    # Join logic
     if action == "join":
-        # Check if user is registered first
-        user_info = await user_db.get_user(user_id)
-        if not user_info or "ign" not in user_info:
-            await callback.answer("❌ AKSES DITOLAK: Hubungkan Profil ( /register ) Anda sebelum bergabung dalam operasi.", show_alert=True)
+        session, msg = await lfg_service.join_session(session_id, callback.from_user.id)
+        if not session:
+            await callback.answer(f"⚠️ {msg}", show_alert=True)
             return
-
-        if user_id in session_data["players"]:
-            await callback.answer("⚠️ Anda sudah terdaftar dalam manifes skuad ini.")
-        elif len(session_data["players"]) >= session_data["max_players"]:
-            await callback.answer("⚠️ KAPASITAS MAKSIMUM: Skuad telah mencapai batas personel.")
-        else:
-            session_data["players"].append(user_id)
             
-            # Track group member
+        text, markup = await build_lfg_message(session, user_service, callback.bot)
+        await callback.message.edit_text(text, reply_markup=markup)
+        await callback.answer(msg)
+        
+        if session.status == "closed":
+            conf_msg = await callback.message.answer(
+                f"✅ <b>SKUAD SIAP TEMPUR</b>\n"
+                f"Skuad <b>{session.host_name}</b> telah siap.\n"
+                f"Bonus +25 XP dan +1 Skor Mabar diberikan seluruh personel."
+            )
             if callback.message.chat.type != "private":
-                from database.group_db import group_db
-                await group_db.track_member(callback.message.chat.id, user_id)
-            
-            # If squad becomes full, auto-close and award points
-            if len(session_data["players"]) == session_data["max_players"]:
-                session_data["status"] = "closed"
-                await lfg_db.update_session(session_id, session_data)
-                text, markup = await build_lfg_message(session_id, session_data)
+                asyncio.create_task(set_auto_delete(conf_msg, None, 60))
                 
-                # Award points to all players
-                for p_id in session_data["players"]:
-                    await user_db.increment_mabar_score(p_id)
-                    
-                from utils.group_logger import send_log
-                await send_log(
-                    callback.bot,
-                    "LFG_FULL",
-                    f"Skuad LFG (Host: {session_data['host_name']}) telah mencapai kapasitas maksimum (4/4)."
-                )
-                    
-                await callback.message.edit_text(text, reply_markup=markup)
-                conf_msg = await callback.message.answer(
-                    f"✅ <b>KONFIRMASI PENUGASAN</b>\n"
-                    f"Skuad <b>{session_data['host_name']}</b> telah siap tempur.\n"
-                    f"Bonus +25 XP dan +1 Skor Mabar diberikan seluruh personel."
-                )
-                await callback.answer("Penugasan divalidasi. Skuad penuh.")
-                
-                # Auto-cleanup confirmation after 60 seconds
-                if callback.message.chat.type != "private":
-                    from database.group_db import group_db
-                    group_info = await group_db.get_group(callback.message.chat.id)
-                    if group_info and group_info.get("settings", {}).get("auto_cleanup", True):
-                        asyncio.create_task(set_auto_delete(conf_msg, None, 60))
-                return
-            
-            await lfg_db.update_session(session_id, session_data)
-            text, markup = await build_lfg_message(session_id, session_data)
-            await callback.message.edit_text(text, reply_markup=markup)
-            await callback.answer("Bergabung ke skuad.")
-            
-    # Leave logic
     elif action == "leave":
-        if user_id in session_data["players"]:
-            if user_id == session_data["host_id"]:
-                session_data["status"] = "closed"
-                await lfg_db.update_session(session_id, session_data)
-                text = f"<b>LFG DIBATALKAN</b>\nHost telah membatalkan sesi ini."
-                await callback.message.edit_text(text)
-                await callback.answer("LFG Dibatalkan.")
-            else:
-                session_data["players"].remove(user_id)
-                await lfg_db.update_session(session_id, session_data)
-                
-                text, markup = await build_lfg_message(session_id, session_data)
-                await callback.message.edit_text(text, reply_markup=markup)
-                await callback.answer("Keluar dari skuad.")
-        else:
-            await callback.answer("Anda tidak berada di dalam skuad ini.")
+        session, msg = await lfg_service.leave_session(session_id, callback.from_user.id)
+        if not session:
+            await callback.answer(f"⚠️ {msg}", show_alert=True)
+            return
             
-    # Close logic
-    elif action == "close":
-        if user_id == session_data["host_id"]:
-            session_data["status"] = "closed"
-            await lfg_db.update_session(session_id, session_data)
-            text, markup = await build_lfg_message(session_id, session_data)
+        if session.status == "closed" and callback.from_user.id == session.host_id:
+            await callback.message.edit_text(f"<b>LFG DIBATALKAN</b>\nHost telah membatalkan sesi ini.")
+        else:
+            text, markup = await build_lfg_message(session, user_service, callback.bot)
             await callback.message.edit_text(text, reply_markup=markup)
-            await callback.answer("Sesi dialihkan ke mode tertutup.")
-        else:
-            await callback.answer("Penolakan akses: Hanya Host yang dapat menutup sesi.", show_alert=True)
+            
+        await callback.answer(msg)
 
-    # Ping logic
     elif action == "ping":
-        if user_id == session_data["host_id"] or user_id in session_data["players"]:
-            current_roles = []
-            for p_id in session_data["players"]:
-                u = await user_db.get_user(p_id)
-                if u and "role" in u:
-                    current_roles.append(u["role"])
-                    
-            lfg_type = session_data.get("lfg_type", "hazard")
-            ping_text = f"<b>PEMBERITAHUAN SKUAD:</b>\nSkuad <b>{session_data['host_name']}</b> membutuhkan tambahan personel."
+        session = await lfg_service.get_session(session_id)
+        if not session or callback.from_user.id not in session.players:
+            await callback.answer("Hanya personel skuad yang bisa melakukan PING.", show_alert=True)
+            return
             
-            if lfg_type == "hazard":
-                ping_text += f"\n<b>Mode:</b> Hazard Operation (Ekstraksi/Loot)\n<b>Kekurangan:</b> {session_data['max_players'] - len(session_data['players'])} Operator (Prioritas Medis/Recon)."
-            else:
-                ping_text += f"\n<b>Mode:</b> Havoc Warfare (Skala Besar/Objektif)\n<b>Kekurangan:</b> {session_data['max_players'] - len(session_data['players'])} Operator (Prioritas Tempur)."
-                
-            ping_text += "\n\n<i>Ketuk [Gabung] di antarmuka LFG utama.</i>"
-            
-            await callback.message.reply(ping_text)
-            await callback.answer("Notifikasi dikirim.")
-        else:
-            await callback.answer("Aksi ditolak. Bergabunglah terlebih dahulu.", show_alert=True)
+        ping_text = (
+            f"<b>PEMBERITAHUAN SKUAD:</b>\n"
+            f"Skuad <b>{session.host_name}</b> membutuhkan tambahan personel.\n"
+            f"<b>Mode:</b> {session.lfg_type.upper()}\n"
+            f"<b>Kekurangan:</b> {session.max_players - len(session.players)} Operator."
+        )
+        await callback.message.reply(ping_text)
+        await callback.answer("Notifikasi dikirim.")

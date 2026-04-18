@@ -1,17 +1,17 @@
 import asyncio
-
-# Commands that are allowed without registration
-ALLOWED_CMDS = {"/start", "/register", "/needhelp", "/sys", "/addadmin", "/deladmin", "/force_gc"}
 from typing import Callable, Dict, Any, Awaitable
 from aiogram import BaseMiddleware
 from aiogram.types import Message, CallbackQuery, TelegramObject
-from database.user_db import user_db
+from services.user_service import UserService
 from utils.auto_delete import set_auto_delete
+
+# Commands that are allowed without registration
+ALLOWED_CMDS = {"/start", "/register", "/needhelp", "/sys", "/addadmin", "/deladmin", "/force_gc", "/menu", "/dashboard"}
 
 class RegistrationMiddleware(BaseMiddleware):
     """
     Global interceptor that blocks unregistered users from using core features.
-    Updated to allow registration flow and dashboard navigation.
+    Updated to use Enterprise UserService.
     """
     async def __call__(
         self,
@@ -29,7 +29,7 @@ class RegistrationMiddleware(BaseMiddleware):
         
         # 1. ALLOWED COMMANDS (Basic Access)
         if is_msg and event.text:
-            cmd = event.text.split()[0]
+            cmd = event.text.split()[0].lower()
             if cmd in ALLOWED_CMDS:
                 return await handler(event, data)
                 
@@ -49,20 +49,20 @@ class RegistrationMiddleware(BaseMiddleware):
             if current_state and "RegisterState" in current_state:
                 return await handler(event, data)
 
-        # 4. DATABASE CHECK
-        user_data = await user_db.get_user(user.id)
-        if user_data and "ign" in user_data:
+        # 4. DATABASE CHECK (using injected service)
+        user_service: UserService = data.get("user_service")
+        user_data = await user_service.get_user(user.id)
+        if user_data and user_data.ign:
             return await handler(event, data)
 
         # 5. BLOCK UNREGISTERED (Fallback)
         if is_msg:
             reply = await event.answer(
-                "<b>OTORISASI DIPERLUKAN</b>\n\n"
+                "<b>🛡️ OTORISASI DIPERLUKAN</b>\n\n"
                 "Silakan daftar melalui <code>/register</code> atau Menu Utama sebelum mengakses fitur ini."
             )
             asyncio.create_task(set_auto_delete(reply, event, 30))
         elif is_cb:
-            await event.answer("Silakan daftar terlebih dahulu di Menu Utama.", show_alert=True)
+            await event.answer("⚠️ Silakan daftar terlebih dahulu di Menu Utama.", show_alert=True)
             
-        return # Execution ends here for unregistered users accessing restricted areas
-
+        return

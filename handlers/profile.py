@@ -1,9 +1,9 @@
 from aiogram import Router, types, F
-from aiogram.filters import Command, CommandObject
+from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from database.user_db import user_db
+from services.user_service import UserService
 from utils.group_logger import send_log
 from utils.style_utils import get_header, get_footer
 from handlers.shop import CATALOG
@@ -26,7 +26,7 @@ def get_role_keyboard():
 
 @router.message(Command("register"))
 @router.callback_query(F.data == "start_register")
-async def cmd_register(event: types.Message | types.CallbackQuery, state: FSMContext):
+async def cmd_register(event: types.Message | types.CallbackQuery, state: FSMContext, user_service: UserService):
     user_id = event.from_user.id
     
     # Redirect if in Group
@@ -39,9 +39,9 @@ async def cmd_register(event: types.Message | types.CallbackQuery, state: FSMCon
         await message.answer(text, reply_markup=builder.as_markup())
         return
 
-    user_data = await user_db.get_user(user_id)
-    if user_data and "ign" in user_data:
-        text = f"✅ <b>KONFIRMASI:</b> Anda sudah terdaftar sebagai <b>{user_data.get('ign')}</b>."
+    user_data = await user_service.get_user(user_id)
+    if user_data and user_data.ign:
+        text = f"✅ <b>KONFIRMASI:</b> Anda sudah terdaftar sebagai <b>{user_data.ign}</b>."
         builder = InlineKeyboardBuilder()
         builder.button(text="🏠 Menu Utama", callback_data="main_menu")
         if isinstance(event, types.CallbackQuery):
@@ -81,25 +81,25 @@ async def process_ign(message: types.Message, state: FSMContext):
     await message.answer(text, reply_markup=get_role_keyboard())
     await state.set_state(RegisterState.waiting_for_role)
     
-    # Try to delete user's input to keep chat clean
     try:
         await message.delete()
     except Exception:
         pass
 
 @router.callback_query(RegisterState.waiting_for_role, F.data.startswith("role_"))
-async def process_role_selection(callback: types.CallbackQuery, state: FSMContext):
+async def process_role_selection(callback: types.CallbackQuery, state: FSMContext, user_service: UserService):
     role = callback.data.split("_")[1]
     
-    user_data = await state.get_data()
-    ign = user_data.get("ign", "Unknown")
+    state_data = await state.get_data()
+    ign = state_data.get("ign", "Unknown")
     
-    await user_db.update_user(callback.from_user.id, {
-        "ign": ign,
-        "role": role,
-        "first_name": callback.from_user.first_name,
-        "username": callback.from_user.username
-    })
+    await user_service.register_user(
+        user_id=callback.from_user.id,
+        ign=ign,
+        role=role,
+        first_name=callback.from_user.first_name,
+        username=callback.from_user.username
+    )
     
     await send_log(
         callback.bot, 
@@ -125,7 +125,7 @@ async def process_role_selection(callback: types.CallbackQuery, state: FSMContex
 
 @router.message(Command("profile"))
 @router.callback_query(F.data == "main_profile")
-async def cmd_profile(event: types.Message | types.CallbackQuery):
+async def cmd_profile(event: types.Message | types.CallbackQuery, user_service: UserService):
     user_id = event.from_user.id
     is_callback = isinstance(event, types.CallbackQuery)
     message = event.message if is_callback else event
@@ -139,28 +139,20 @@ async def cmd_profile(event: types.Message | types.CallbackQuery):
         await message.answer(text, reply_markup=builder.as_markup())
         return
 
-    user_data = await user_db.get_user(user_id)
-    if not user_data or "ign" not in user_data:
+    user_data = await user_service.get_user(user_id)
+    if not user_data or not user_data.ign:
         text = "❌ Profil tidak ditemukan. Silakan daftar terlebih dahulu menggunakan tombol di bawah."
         builder = InlineKeyboardBuilder()
         builder.button(text="🚀 Daftar Sekarang", callback_data="start_register")
         builder.button(text="🏠 Menu Utama", callback_data="main_menu")
         
         if is_callback:
-            await message.message.edit_text(text, reply_markup=builder.as_markup())
+            await event.message.edit_text(text, reply_markup=builder.as_markup())
         else:
-            await message.answer(text, reply_markup=builder.as_markup())
+            await event.answer(text, reply_markup=builder.as_markup())
         return
         
-    role = user_data.get("role", "N/A")
-    ign = user_data.get("ign", "N/A")
-    level = user_data.get("level", 1)
-    xp = user_data.get("xp", 0)
-    rep = user_data.get("rep_points", 0)
-    mabar = user_data.get("mabar_score", 0)
-    balance = user_data.get("balance", 0)
-    owned_ids = user_data.get("owned_items", [])
-    
+    owned_ids = user_data.owned_items or []
     badges = []
     for oid in owned_ids:
         if oid in CATALOG:
@@ -170,13 +162,13 @@ async def cmd_profile(event: types.Message | types.CallbackQuery):
     
     profile_text = get_header("PROFIL OPERATOR", "👤")
     profile_text += (
-        f"<b>IGN:</b> <code>{ign}</code>\n"
-        f"<b>ROLE:</b> {role}\n\n"
-        f"<b>LEVEL:</b> {level} ({xp} XP)\n"
-        f"<b>REP:</b> ⭐ {rep}\n"
-        f"<b>SALDO:</b> 💰 {balance} Coins\n"
+        f"<b>IGN:</b> <code>{user_data.ign}</code>\n"
+        f"<b>ROLE:</b> {user_data.role}\n\n"
+        f"<b>LEVEL:</b> {user_data.level} ({user_data.xp} XP)\n"
+        f"<b>REP:</b> ⭐ {user_data.rep_points}\n"
+        f"<b>SALDO:</b> 💰 {user_data.balance} Coins\n"
         f"─" * 10 + "\n"
-        f"<b>MABAR:</b> {mabar} Sesi\n"
+        f"<b>MABAR:</b> {user_data.mabar_score} Sesi\n"
         f"<b>BADGES:</b> {badge_text}\n"
     )
     
@@ -190,7 +182,7 @@ async def cmd_profile(event: types.Message | types.CallbackQuery):
         await event.answer(profile_text, reply_markup=builder.as_markup())
 
 @router.message(Command("vouch"))
-async def cmd_vouch(message: types.Message):
+async def cmd_vouch(message: types.Message, user_service: UserService):
     if not message.reply_to_message:
         await message.answer("❌ Balas pesan user yang ingin Anda beri reputasi (Vouch).")
         return
@@ -204,18 +196,17 @@ async def cmd_vouch(message: types.Message):
         await message.answer("❌ Bot tidak membutuhkan reputasi.")
         return
 
-    # Check if target is registered
-    target_data = await user_db.get_user(target_user.id)
+    target_data = await user_service.get_user(target_user.id)
     if not target_data:
         await message.answer("❌ User tersebut belum terdaftar di sistem Tactical Hub.")
         return
 
-    await user_db.add_rep(target_user.id, 1)
-    await user_db.add_xp(message.from_user.id, 5) # Giving vouch gives a bit of XP
+    await user_service.add_rep(target_user.id, 1)
+    await user_service.add_xp(message.from_user.id, 5)
     
     await message.answer(
         f"✅ <b>VOUCH BERHASIL</b>\n"
-        f"Reputasi berhasil diberikan kepada <b>{target_data.get('ign')}</b>.\n"
+        f"Reputasi berhasil diberikan kepada <b>{target_data.ign}</b>.\n"
         f"Terima kasih telah membangun komunitas yang sehat!"
     )
     
