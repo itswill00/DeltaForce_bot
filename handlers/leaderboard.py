@@ -4,7 +4,7 @@ from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from services.user_service import UserService
 from services.group_service import GroupService
-from utils.style_utils import get_header, get_footer
+from utils.style_utils import get_header, get_footer, get_divider, format_field
 from utils.auto_delete import set_auto_delete
 
 router = Router()
@@ -16,82 +16,63 @@ async def cmd_leaderboard(event: types.Message | types.CallbackQuery, user_servi
     is_callback = isinstance(event, types.CallbackQuery)
     message = event.message if is_callback else event
     
-    # Check scope from callback or default
     scope = "global"
     if message.chat.type != "private":
-        scope = "group" # Default to group in groups
+        scope = "group"
         
     if is_callback and event.data.startswith("lb_"):
         scope = event.data.split("_")[1]
     
-    # Local tracking if in group
     chat_id = message.chat.id
     if message.chat.type != "private":
         await group_service.register_group(chat_id, message.chat.title)
         await group_service.track_member(chat_id, event.from_user.id)
 
-    # Fetch data based on scope
     if scope == "group" and message.chat.type != "private":
         group_info = await group_service.get_group(chat_id)
         member_ids = group_info.members if group_info else []
-        
-        # Filter global players by those in this group (O(N) for JSON layer is fine for this scale)
-        top_mabar = []
-        top_trivia = []
-        
-        # Optimization: We already have get_top_players, but for group scope we filter manually
-        all_users = await user_service.db.get_all()
-        group_players = [user_service.get_user(int(uid)) for uid in all_users["users"] if int(uid) in member_ids]
-        
-        # Resolve group_players (they are UserDTO objects from get_user)
-        # Note: get_user is async, so we need to wait for them.
         resolved_players = []
         for uid in member_ids:
             u = await user_service.get_user(uid)
             if u: resolved_players.append(u)
             
         top_mabar = sorted(resolved_players, key=lambda x: x.mabar_score, reverse=True)[:5]
-        # Assuming trivia_score was added to UserDTO in my previous step (if not I'll fix it)
-        # Wait, I didn't add trivia_score to UserDTO. Let me check my previous write.
-        top_trivia = sorted(resolved_players, key=lambda x: getattr(x, "trivia_score", 0), reverse=True)[:5]
-        title_suffix = f" (GRUP: {message.chat.title})"
+        top_trivia = sorted(resolved_players, key=lambda x: x.trivia_score, reverse=True)[:5]
+        title_suffix = f"LOCAL: {message.chat.title}"
     else:
         top_mabar = await user_service.get_top_players(5, "mabar_score")
-        # I need to ensure trivia_score is supported in UserDTO and UserService
         top_trivia = await user_service.get_top_players(5, "trivia_score")
-        title_suffix = " (GLOBAL)"
+        title_suffix = "GLOBAL COMMAND"
 
-    text = get_header(f"PAPAN PERINGKAT{title_suffix}", "🏆")
+    text = get_header(f"RANKINGS: {title_suffix}", "🏆")
     
-    # MABAR LEADERBOARD
-    text += "⚔️ <b>TOP MABAR (OPERASI)</b>\n"
+    text += "⚔️ <b>TOP OPERATORS (SQUAD)</b>\n"
     if not top_mabar:
-        text += "<i>Belum ada data di lingkup ini.</i>\n"
+        text += "<i>No data available.</i>\n"
     else:
         for i, p in enumerate(top_mabar):
-            ign = p.ign if p.ign else "Unknown"
-            score = p.mabar_score
-            text += f"{i+1}. <b>{ign}</b>: {score} Mabar\n"
+            text += f"<code>{i+1:02}</code>. <b>{p.ign:12}</b> | <code>{p.mabar_score:3}</code> Ops\n"
             
-    # TRIVIA LEADERBOARD
-    text += "\n🧠 <b>TOP TRIVIA (SKOR)</b>\n"
+    text += get_divider()
+    text += "🧠 <b>TOP ANALYSTS (TRIVIA)</b>\n"
     if not top_trivia:
-        text += "<i>Belum ada data di lingkup ini.</i>\n"
+        text += "<i>No data available.</i>\n"
     else:
         for i, p in enumerate(top_trivia):
-            ign = p.ign if p.ign else "Unknown"
-            score = getattr(p, "trivia_score", 0)
-            text += f"{i+1}. <b>{ign}</b>: {score} Poin\n"
+            text += f"<code>{i+1:02}</code>. <b>{p.ign:12}</b> | <code>{p.trivia_score:3}</code> Pts\n"
             
+    text += get_divider()
     builder = InlineKeyboardBuilder()
     if scope == "global" and message.chat.type != "private":
-        builder.button(text="📍 Lihat Peringkat Grup Ini", callback_data="lb_group")
+        builder.button(text="📍 LOCAL RANKINGS", callback_data="lb_group")
     elif scope == "group":
-        builder.button(text="🌍 Lihat Peringkat Global", callback_data="lb_global")
+        builder.button(text="🌍 GLOBAL RANKINGS", callback_data="lb_global")
         
     if message.chat.type == "private":
-        builder.button(text="🏠 Menu Utama", callback_data="main_menu")
+        builder.button(text="🏠 HUB MENU", callback_data="main_menu")
     builder.adjust(1)
+    
+    text += get_footer("Tactical Ranking System")
     
     if is_callback:
         await event.message.edit_text(text, reply_markup=builder.as_markup())

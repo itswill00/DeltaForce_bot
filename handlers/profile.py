@@ -7,6 +7,7 @@ from services.user_service import UserService
 from utils.group_logger import send_log
 from utils.style_utils import get_header, get_footer
 from handlers.shop import CATALOG
+from views.profile_view import render_profile
 
 router = Router()
 
@@ -158,19 +159,8 @@ async def cmd_profile(event: types.Message | types.CallbackQuery, user_service: 
         if oid in CATALOG:
             badges.append(CATALOG[oid]["name"])
     
-    badge_text = ", ".join(badges) if badges else "<i>Belum ada tanda pangkat</i>"
-    
-    profile_text = get_header("PROFIL OPERATOR", "👤")
-    profile_text += (
-        f"<b>IGN:</b> <code>{user_data.ign}</code>\n"
-        f"<b>ROLE:</b> {user_data.role}\n\n"
-        f"<b>LEVEL:</b> {user_data.level} ({user_data.xp} XP)\n"
-        f"<b>REP:</b> ⭐ {user_data.rep_points}\n"
-        f"<b>SALDO:</b> 💰 {user_data.balance} Coins\n"
-        f"─" * 10 + "\n"
-        f"<b>MABAR:</b> {user_data.mabar_score} Sesi\n"
-        f"<b>BADGES:</b> {badge_text}\n"
-    )
+    # Use the new View Layer
+    profile_text = render_profile(user_data, badges)
     
     builder = InlineKeyboardBuilder()
     builder.button(text="🏠 Menu Utama", callback_data="main_menu")

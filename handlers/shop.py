@@ -2,15 +2,15 @@ from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from services.user_service import UserService
-from utils.style_utils import get_header, get_footer
+from utils.style_utils import get_header, get_footer, format_field, get_divider
 
 router = Router()
 
 CATALOG = {
-    "flair_recon": {"name": "Elite Recon Badge", "price": 500, "description": "Tanda pangkat pengintai elit."},
-    "flair_medic": {"name": "Field Surgeon Badge", "price": 500, "description": "Tanda pangkat medis lapangan."},
-    "flair_assault": {"name": "Vanguard Badge", "price": 500, "description": "Tanda pangkat pasukan barisan depan."},
-    "flair_vet": {"name": "Season 1 Veteran", "price": 2000, "description": "Gelar prestisius veteran musim pertama."}
+    "flair_recon": {"name": "Elite Recon Badge", "price": 500},
+    "flair_medic": {"name": "Field Surgeon Badge", "price": 500},
+    "flair_assault": {"name": "Vanguard Badge", "price": 500},
+    "flair_vet": {"name": "Season 1 Veteran", "price": 2000}
 }
 
 @router.message(Command("shop"))
@@ -20,37 +20,39 @@ async def cmd_shop(event: types.Message | types.CallbackQuery, user_service: Use
     message = event.message if is_callback else event
     user_id = event.from_user.id
     
-    # Redirect if in Group
     if message.chat.type != "private":
         bot_user = await event.bot.get_me()
-        text = "🛍️ <b>BURSA PANGKAT:</b> Silakan buka toko di chat pribadi untuk melihat saldo dan melakukan transaksi."
+        text = get_header("SUPPLY DROP ACCESS", "🛍️")
+        text += "Unauthorized access in group channels. Open private link for secure transactions."
         builder = InlineKeyboardBuilder()
-        builder.button(text="🛒 Buka Toko (DM)", url=f"https://t.me/{bot_user.username}?start=shop")
+        builder.button(text="🛒 OPEN SUPPLY DROP (DM)", url=f"https://t.me/{bot_user.username}?start=shop")
         await message.answer(text, reply_markup=builder.as_markup())
         return
 
     user_data = await user_service.get_user(user_id)
     if not user_data or not user_data.ign:
-        text = "❌ Profil tidak ditemukan. Silakan daftar terlebih dahulu sebelum berbelanja."
+        text = get_header("ACCESS DENIED", "❌")
+        text += "Operator not recognized. Register profile to access Supply Drop."
         builder = InlineKeyboardBuilder()
-        builder.button(text="🚀 Daftar Sekarang", callback_data="start_register")
-        builder.button(text="🏠 Menu Utama", callback_data="main_menu")
+        builder.button(text="🚀 INITIALIZE", callback_data="start_register")
+        builder.button(text="🏠 HUB MENU", callback_data="main_menu")
         if is_callback: await event.message.edit_text(text, reply_markup=builder.as_markup())
         else: await event.answer(text, reply_markup=builder.as_markup())
         return
         
-    balance = user_data.balance
-    
-    text = get_header("BURSA PANGKAT & ITEM", "🛒")
-    text += f"💰 <b>SALDO:</b> {balance} Coins\n\n"
-    text += "Gunakan koin Anda untuk membeli tanda pangkat eksklusif:"
+    text = get_header("SUPPLY DROP & REWARDS", "🛒")
+    text += format_field("CREDITS", f"💰 {user_data.balance}", "🏦")
+    text += get_divider()
+    text += "Authorized items available for exchange:"
     
     builder = InlineKeyboardBuilder()
     for item_id, item in CATALOG.items():
         builder.button(text=f"🎖️ {item['name']} ({item['price']})", callback_data=f"buy_{item_id}")
     
-    builder.button(text="🏠 Menu Utama", callback_data="main_menu")
+    builder.button(text="🏠 HUB MENU", callback_data="main_menu")
     builder.adjust(1)
+    
+    text += "\n" + get_footer("Supply Chain v4.0")
     
     if is_callback:
         await event.message.edit_text(text, reply_markup=builder.as_markup())
@@ -64,42 +66,24 @@ async def process_buy(callback: types.CallbackQuery, user_service: UserService):
     item = CATALOG.get(item_id)
     
     if not item:
-        await callback.answer("❌ Item tidak tersedia atau kadaluarsa.", show_alert=True)
+        await callback.answer("❌ Item designation invalid.", show_alert=True)
         return
         
     user_data = await user_service.get_user(callback.from_user.id)
-    if not user_data:
-        await callback.answer("❌ Profil tidak ditemukan. Silakan /register.", show_alert=True)
-        return
-        
-    balance = user_data.balance
+    if not user_data: return
     
-    if balance < item["price"]:
-        await callback.answer(f"❌ Saldo tidak cukup! Butuh {item['price']}, Saldo Anda {balance}.", show_alert=True)
+    if user_data.balance < item["price"]:
+        await callback.answer(f"❌ Insufficient credits. Needed: {item['price']}.", show_alert=True)
         return
         
-    # Grant item (add to a list in user_db)
     owned_items = user_data.owned_items or []
     if item_id in owned_items:
-        await callback.answer("⚠️ Anda sudah memiliki tanda pangkat ini.", show_alert=True)
+        await callback.answer("⚠️ Item already in possession.", show_alert=True)
         return
         
     owned_items.append(item_id)
     await user_service.add_balance(callback.from_user.id, -item["price"])
     await user_service.update_user(callback.from_user.id, {"owned_items": owned_items})
     
-    await callback.answer(f"✅ Transaksi Berhasil: {item['name']} diperoleh!", show_alert=True)
-    
-    # Update shop view
-    new_balance = balance - item["price"]
-    text = get_header("BURSA PANGKAT & ITEM", "🛒")
-    text += f"💰 <b>SALDO:</b> {new_balance} Coins\n\n"
-    text += "Transaksi berhasil dikonfirmasi."
-    
-    builder = InlineKeyboardBuilder()
-    for i_id, i in CATALOG.items():
-        builder.button(text=f"🎖️ {i['name']} ({i['price']})", callback_data=f"buy_{i_id}")
-    builder.button(text="🏠 Menu Utama", callback_data="main_menu")
-    builder.adjust(1)
-    
-    await callback.message.edit_text(text, reply_markup=builder.as_markup())
+    await callback.answer(f"✅ TRANSACTION CONFIRMED: {item['name']} acquired!", show_alert=True)
+    await cmd_shop(callback, user_service)

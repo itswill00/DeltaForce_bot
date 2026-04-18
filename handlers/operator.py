@@ -3,9 +3,8 @@ import os
 from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from utils.style_utils import get_header, get_footer
+from views.operator_view import render_operator_list, render_operator_detail
 import asyncio
-from utils.auto_delete import set_auto_delete
 
 router = Router()
 
@@ -15,7 +14,15 @@ def get_op_data():
         with open(file_path, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception:
-        return {}
+        return {
+            "d-wolf": {
+                "name": "D-Wolf (Kai Silva)",
+                "role": "Assault",
+                "description": "Tactical specialist with exoskeleton enhancements for mobility and aggression.",
+                "active_skill": "Exoskeleton Overdrive",
+                "passive_skill": "Combat Agility"
+            }
+        }
 
 def generate_op_menu():
     ops = get_op_data() or {}
@@ -23,24 +30,21 @@ def generate_op_menu():
     for op_id, op_info in ops.items():
         if op_info and "name" in op_info:
             builder.button(text=f"👤 {op_info['name']}", callback_data=f"op_{op_id}")
-    builder.button(text="🏠 Menu Utama", callback_data="main_menu")
-    builder.adjust(2)
+    builder.button(text="🏠 HUB MENU", callback_data="main_menu")
+    builder.adjust(1)
     return builder.as_markup()
 
 @router.message(Command("operator", "op"))
 @router.callback_query(F.data == "main_operator")
 async def cmd_operator(event: types.Message | types.CallbackQuery):
     is_callback = isinstance(event, types.CallbackQuery)
-    message = event.message if is_callback else event
-    
-    text = get_header("DATABASE OPERATOR", "🚑")
-    text += "Pilih operator untuk melihat spesialisasi dan kemampuan taktisnya:"
+    text = render_operator_list()
     
     if is_callback:
         await event.message.edit_text(text, reply_markup=generate_op_menu())
         await event.answer()
     else:
-        await message.answer(text, reply_markup=generate_op_menu())
+        await event.answer(text, reply_markup=generate_op_menu())
 
 @router.callback_query(F.data.startswith("op_"))
 async def process_op_selection(callback: types.CallbackQuery):
@@ -52,30 +56,16 @@ async def process_op_selection(callback: types.CallbackQuery):
         
     ops = get_op_data()
     if op_id not in ops:
-        await callback.answer("Data operator terenkripsi/hilang.")
+        await callback.answer("Dossier encrypted or missing.", show_alert=True)
         return
         
     op = ops[op_id]
-    
-    role_map = {
-        "Assault": "[ Assault/Pendobrak ]",
-        "Recon": "[ Recon/Pengintai ]",
-        "Medic": "[ Medic/Medis ]",
-        "Engineer": "[ Engineer/Teknisi ]"
-    }
-    icon = role_map.get(op.get("role"), "Operator")
-    
-    text = get_header(f"OPERATOR: {op.get('name', 'N/A').upper()}", "👤")
-    text += (
-        f"<b>ROLE:</b> {icon}\n"
-        f"<i>\"{op.get('description', 'Data tidak tersedia.')}\"</i>\n\n"
-        f"<b>AKTIF:</b> {op.get('active_skill', 'N/A')}\n"
-        f"<b>PASIF:</b> {op.get('passive_skill', 'N/A')}"
-    )
+    text = render_operator_detail(op)
     
     builder = InlineKeyboardBuilder()
-    builder.button(text="⬅️ Kembali", callback_data="op_back")
-    builder.button(text="🏠 Menu Utama", callback_data="main_menu")
+    builder.button(text="⬅️ BACK TO LIST", callback_data="op_back")
+    builder.button(text="🏠 HUB MENU", callback_data="main_menu")
     builder.adjust(1)
     
     await callback.message.edit_text(text, reply_markup=builder.as_markup())
+    await callback.answer()

@@ -5,6 +5,7 @@ from services.user_service import UserService
 from services.lfg_service import LfgService
 from utils.style_utils import get_header, get_footer
 from utils.auto_delete import set_auto_delete
+from views.lfg_view import render_lfg
 import asyncio
 
 router = Router()
@@ -61,7 +62,7 @@ async def process_lfg_host(callback: types.CallbackQuery, user_service: UserServ
         f"<b>{host_name}</b> membuka LFG baru!\nMode: {tipe_str}"
     )
     
-    text, markup = await build_lfg_message(session, user_service, callback.bot)
+    text, markup = await build_lfg_interface(session, user_service, callback.bot)
     try:
         await callback.message.delete()
     except:
@@ -73,39 +74,18 @@ async def process_lfg_host(callback: types.CallbackQuery, user_service: UserServ
     if callback.message.chat.type != "private":
         asyncio.create_task(set_auto_delete(lfg_msg, None, 600))
 
-async def build_lfg_message(session, user_service: UserService, bot):
-    player_count = len(session.players)
-    max_p = session.max_players
-    status_text = "🟢 ACTIVE" if session.status == "open" else "🔴 DEPLOYED"
-    
-    tipe_str = "HAZARD OPERATION" if session.lfg_type == "hazard" else "HAVOC WARFARE"
-    icon = "☣️" if session.lfg_type == "hazard" else "⚔️"
-    
-    text = get_header(f"DEPLOYMENT ORDER #{session.id.upper()}", icon)
-    text += (
-        f"<b>OPERASI:</b> {tipe_str}\n"
-        f"<b>STATUS:</b> {status_text}\n"
-        f"<b>KUOTA:</b> {player_count}/{max_p} OPERATOR\n"
-        f"─" * 15 + "\n"
-        f"<b>MANIFES SKUAD:</b>\n"
-    )
-    
-    for i, pid in enumerate(session.players):
+async def build_lfg_interface(session, user_service: UserService, bot):
+    # Resolve player names and roles for the view
+    player_data = []
+    for pid in session.players:
         u = await user_service.get_user(pid)
-        is_host = " [LEADER]" if pid == session.host_id else ""
         if u:
-            text += f"{i+1}. <b>{u.ign}</b> ({u.role}){is_host}\n"
+            player_data.append(f"<b>{u.ign}</b> (<code>{u.role}</code>)")
         else:
-            text += f"{i+1}. Operator-ID:{pid}{is_host}\n"
+            player_data.append(f"Operator-ID:<code>{pid}</code>")
             
-    for i in range(player_count, max_p):
-        text += f"{i+1}. [ 🔓 SLOT TERSEDIA ]\n"
-    
-    text += f"─" * 15 + "\n"
-    if session.status == "open":
-        text += "<i>Menunggu otorisasi skuad penuh untuk pendeploian...</i>"
-    else:
-        text += "<i>Unit telah dideploy ke area operasi.</i>"
+    # Use the View Layer
+    text = render_lfg(session, player_data)
 
     builder = InlineKeyboardBuilder()
     if session.status == "open":
@@ -131,7 +111,7 @@ async def process_lfg_action(callback: types.CallbackQuery, user_service: UserSe
             await callback.answer(f"⚠️ {msg}", show_alert=True)
             return
             
-        text, markup = await build_lfg_message(session, user_service, callback.bot)
+        text, markup = await build_lfg_interface(session, user_service, callback.bot)
         await callback.message.edit_text(text, reply_markup=markup)
         await callback.answer(msg)
         
@@ -153,7 +133,7 @@ async def process_lfg_action(callback: types.CallbackQuery, user_service: UserSe
         if session.status == "closed" and callback.from_user.id == session.host_id:
             await callback.message.edit_text(f"<b>LFG DIBATALKAN</b>\nHost telah membatalkan sesi ini.")
         else:
-            text, markup = await build_lfg_message(session, user_service, callback.bot)
+            text, markup = await build_lfg_interface(session, user_service, callback.bot)
             await callback.message.edit_text(text, reply_markup=markup)
             
         await callback.answer(msg)
