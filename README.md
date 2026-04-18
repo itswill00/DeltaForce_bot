@@ -1,74 +1,94 @@
-# 🛡️ Delta Force Community Bot (Enterprise Edition)
+# ◈ Delta Force Community Hub
 
-![Python Version](https://img.shields.io/badge/python-3.9+-blue.svg)
-![Aiogram Version](https://img.shields.io/badge/aiogram-3.4+-orange.svg)
-![Database](https://img.shields.io/badge/database-JSON--Atomic-yellow.svg)
-![Status](https://img.shields.io/badge/status-production-brightgreen.svg)
+![Aiogram](https://img.shields.io/badge/aiogram-3.4+-orange.svg)
+![Database](https://img.shields.io/badge/persistence-Atomic_JSON-yellow.svg)
+![Status](https://img.shields.io/badge/status-Production_Ready-brightgreen.svg)
 
-Bot Telegram **Enterprise-Grade** yang dirancang khusus untuk koordinasi komunitas **Delta Force Indonesia**. Dibangun dengan arsitektur modern yang mengedepankan stabilitas, performa tinggi, dan estetika taktis menggunakan sistem **Atomic JSON Persistence**.
-
----
-
-## ✨ Fitur Unggulan
-
-### 🕹️ Advanced LFG (Looking For Group)
-Sistem koordinasi mabar yang presisi dan real-time.
-*   **Mode Operasi:** *Hazard Operation* (3 Pemain) & *Havoc Warfare* (4 Pemain).
-*   **Atomic Updates:** Menghindari race-condition menggunakan `asyncio.Lock` dan *Atomic File Replacement*.
-*   **Smart PING:** Notifikasi khusus kepada member dengan role yang dibutuhkan.
-
-### 🎭 Enterprise RPG & Profiling
-Ubah interaksi menjadi sistem leveling yang matang.
-*   **Dynamic Leveling:** Kalkulasi XP berbasis formula logaritmik yang efisien.
-*   **Role Specialization:** *Assault, Medic, Recon, Engineer* dengan integrasi skill database.
-*   **Vouch System:** Reputasi antar personel yang tercatat secara permanen di database.
-
-### 📊 Tactical Data Layer
-Penyimpanan data yang portable dan aman.
-*   **Atomic JSON Persistence:** Database tunggal `localdb.json` yang mudah dibackup dan dipindah.
-*   **Service Layer:** Pemisahan logika bisnis (XP, LFG) dari antarmuka Telegram.
-*   **Structured Logging:** Audit log lengkap untuk setiap aksi admin dan error sistem.
+Bot Telegram berskala **Enterprise** yang dirancang khusus untuk koordinasi komunitas **Delta Force Indonesia**. Mengutamakan stabilitas tinggi, perlindungan data otomatis, dan pengalaman pengguna yang matang tanpa dekorasi berlebihan.
 
 ---
 
-## 🚀 Instalasi Cepat
+## ▣ Fitur Utama
 
-### 🛠️ Langkah-langkah Setup
-1.  **Clone & Masuk ke Direktori:**
-    ```bash
-    git clone https://github.com/itswill00/DeltaForce_bot.git
-    cd DeltaForce_bot
-    ```
+### ◈ Koordinasi Skuad (LFG)
+*   **Mode Operasi**: Mendukung pendaftaran untuk mode *Hazard Ops* dan *Havoc Warfare*.
+*   **Slot Management**: Penguncian slot otomatis untuk menghindari tumpang tindih pendaftaran.
+*   **Atomic Safety**: Menjamin konsistensi data meskipun diakses oleh ribuan member secara bersamaan.
 
-2.  **Install Dependensi:**
-    ```bash
-    pip install -r requirements.txt
-    ```
+### ⬢ Progresi Personel (RPG)
+*   **Leveling System**: XP dihitung berdasarkan aktivitas mabar dan kontribusi trivia.
+*   **Dossier Operator**: Kartu profil minimalis dengan progres XP visual.
+*   **Honorary Badges**: Tanda pangkat eksklusif yang dapat dikoleksi melalui bursa item.
 
-3.  **Konfigurasi Environment:**
-    Salin file `.env.sample` menjadi `.env` dan isi token Anda.
-    ```bash
-    cp .env.sample .env
-    # Buka .env dan isi BOT_TOKEN Anda
-    ```
-
-4.  **Jalankan Bot:**
-    ```bash
-    python bot.py
-    ```
+### 🛡️ Keamanan & Stabilitas (Enterprise)
+*   **Disaster Recovery**: Backup database `localdb.json` otomatis ke Log Group setiap 2 jam.
+*   **Anti-Spam Shield**: Middleware throttling untuk mencegah beban berlebih akibat spam klik.
+*   **Smart Broadcast**: Pengiriman pengumuman massal dengan manajemen *rate-limit* otomatis.
+*   **Self-Updater**: Perbarui kode bot langsung via Telegram dengan perintah `/refresh`.
 
 ---
 
-## 🛠️ Arsitektur Teknis
-*   **Framework:** `aiogram 3.x`
-*   **Database:** High-performance JSON with Atomic Write Safety
-*   **Data Validation:** `Pydantic v2` & `pydantic-settings`
-*   **Architecture Pattern:** Service-Oriented Architecture (SOA)
+## 🚀 Panduan Instalasi & Deploy
+
+Bot ini dirancang untuk kemudahan deploy di lingkungan **Linux/VPS** atau **Termux**.
+
+### 1. Persiapan Lingkungan
+```bash
+git clone https://github.com/itswill00/DeltaForce_bot.git
+cd DeltaForce_bot
+pip install -r requirements.txt
+```
+
+### 2. Konfigurasi Environment
+Salin file `.env.sample` menjadi `.env` dan lengkapi datanya:
+```bash
+cp .env.sample .env
+nano .env
+```
+**Detail Wajib:**
+*   `BOT_TOKEN`: Didapat dari @BotFather.
+*   `OWNER_ID`: ID Telegram kamu (untuk akses `/refresh` dan `/sys`).
+*   `LOG_GROUP_ID`: ID Grup privat untuk backup database dan log audit.
+
+### 3. Deploy di VPS (Systemd)
+Agar bot tetap menyala otomatis meskipun VPS restart, buat service systemd:
+```bash
+sudo nano /etc/systemd/system/deltaforce.service
+```
+Tempelkan konfigurasi berikut (sesuaikan path):
+```ini
+[Unit]
+Description=Delta Force Hub Bot
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /root/DeltaForce_bot/bot.py
+WorkingDirectory=/root/DeltaForce_bot
+Restart=always
+RestartSec=10
+User=root
+
+[Install]
+WantedBy=multi-user.target
+```
+Aktifkan dan jalankan:
+```bash
+sudo systemctl enable deltaforce
+sudo systemctl start deltaforce
+```
 
 ---
 
-## 🤝 Kontribusi & Lisensi
-Proyek ini bersifat Open Source. Silakan lakukan *Pull Request* untuk peningkatan fitur.
+## ⌗ Arsitektur Teknis
+*   **Visual Style**: Minimalist Symbolic Aesthetic (Compact & Neat).
+*   **Logic Layer**: Service-Oriented Architecture (UserService, LfgService).
+*   **Database**: Asynchronous JSON with Atomic Write Safety.
+*   **Audit Layer**: EventLogger Middleware untuk pemantauan interaksi *real-time*.
+
+---
+
+## ⚠️ Status Beta
+Proyek ini masih dalam tahap pengembangan aktif. Jika menemukan kendala teknis atau memiliki ide fitur, silakan hubungi **noticesa**.
 
 **Delta Force Indonesia Open Source Project**
-*"Tactical Precision, Community Driven."*
+*Tactical Precision. Community Driven.*
