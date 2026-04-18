@@ -44,7 +44,7 @@ async def cmd_register(event: types.Message | types.CallbackQuery, state: FSMCon
     if user_data and user_data.ign:
         text = f"✅ <b>KONFIRMASI:</b> Anda sudah terdaftar sebagai <b>{user_data.ign}</b>."
         builder = InlineKeyboardBuilder()
-        builder.button(text="🏠 Menu Utama", callback_data="main_menu")
+        builder.button(text="◃ KEMBALI KE MENU", callback_data="main_menu")
         if isinstance(event, types.CallbackQuery):
             await event.message.edit_text(text, reply_markup=builder.as_markup())
         else:
@@ -119,7 +119,7 @@ async def process_role_selection(callback: types.CallbackQuery, state: FSMContex
     )
     
     builder = InlineKeyboardBuilder()
-    builder.button(text="📱 Buka Dashboard Utama", callback_data="main_menu")
+    builder.button(text="◃ BUKA MENU UTAMA", callback_data="main_menu")
     
     await callback.message.edit_text(text, reply_markup=builder.as_markup())
     await callback.answer("Registrasi Selesai!")
@@ -145,7 +145,7 @@ async def cmd_profile(event: types.Message | types.CallbackQuery, user_service: 
         text = "❌ Profil tidak ditemukan. Silakan daftar terlebih dahulu menggunakan tombol di bawah."
         builder = InlineKeyboardBuilder()
         builder.button(text="🚀 Daftar Sekarang", callback_data="start_register")
-        builder.button(text="🏠 Menu Utama", callback_data="main_menu")
+        builder.button(text="◃ KEMBALI KE MENU", callback_data="main_menu")
         
         if is_callback:
             await event.message.edit_text(text, reply_markup=builder.as_markup())
@@ -163,7 +163,7 @@ async def cmd_profile(event: types.Message | types.CallbackQuery, user_service: 
     profile_text = render_profile(user_data, badges)
     
     builder = InlineKeyboardBuilder()
-    builder.button(text="🏠 Menu Utama", callback_data="main_menu")
+    builder.button(text="◃ KEMBALI KE MENU", callback_data="main_menu")
     
     if is_callback:
         await event.message.edit_text(profile_text, reply_markup=builder.as_markup())

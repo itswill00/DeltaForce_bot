@@ -32,12 +32,12 @@ async def cmd_map(event: types.Message | types.CallbackQuery):
         if map_data and "name" in map_data:
             builder.button(text=f"📍 {map_data['name']}", callback_data=f"intel_map_{map_id}")
     
-    builder.button(text="💎 Item Langka (Loot)", callback_data="intel_loot_list")
-    builder.button(text="🏠 Menu Utama", callback_data="main_menu")
+    builder.button(text="⌬ ITEM LANGKA", callback_data="intel_loot_list")
+    builder.button(text="🏠 MENU UTAMA", callback_data="main_menu")
     builder.adjust(1)
     
     text = get_header("INTEL PETA & OPERASI", "🔍")
-    text += "Pilih peta untuk melihat titik ekstraksi dan lokasi berbahaya:"
+    text += "Pilih sektor operasi untuk melihat detail ekstraksi:"
     
     if is_callback:
         await event.message.edit_text(text, reply_markup=builder.as_markup())
@@ -62,8 +62,8 @@ async def process_map_info(callback: types.CallbackQuery):
     )
     
     builder = InlineKeyboardBuilder()
-    builder.button(text="⬅️ Kembali", callback_data="intel_home")
-    builder.button(text="🏠 Menu Utama", callback_data="main_menu")
+    builder.button(text="◃ KEMBALI", callback_data="intel_home")
+    builder.button(text="🏠 MENU UTAMA", callback_data="main_menu")
     builder.adjust(1)
     
     await callback.message.edit_text(text, reply_markup=builder.as_markup())
@@ -91,8 +91,8 @@ async def cmd_loot(event: types.Message | types.CallbackQuery):
     text += get_footer("Nilai estimasi Auction House")
     
     builder = InlineKeyboardBuilder()
-    builder.button(text="⬅️ Kembali", callback_data="intel_home")
-    builder.button(text="🏠 Menu Utama", callback_data="main_menu")
+    builder.button(text="◃ KEMBALI", callback_data="intel_home")
+    builder.button(text="🏠 MENU UTAMA", callback_data="main_menu")
     builder.adjust(1)
     
     if is_callback:

@@ -35,7 +35,7 @@ async def cmd_meta(event: types.Message | types.CallbackQuery):
     builder = InlineKeyboardBuilder()
     for c in categories:
         builder.button(text=f"📂 {c}", callback_data=f"meta_cat_{c}")
-    builder.button(text="🏠 Menu Utama", callback_data="main_menu")
+    builder.button(text="🏠 MENU UTAMA", callback_data="main_menu")
     builder.adjust(2)
     
     text = get_header("INFO SENJATA & META", "🔫")
@@ -70,8 +70,8 @@ async def process_meta(callback: types.CallbackQuery):
             callback_prefix=f"meta_page_{param}_"
         )
         builder = paginator.get_page(0)
-        builder.button(text="⬅️ Kembali", callback_data="meta_home")
-        builder.button(text="🏠 Menu Utama", callback_data="main_menu")
+        builder.button(text="◃ KEMBALI", callback_data="meta_home")
+        builder.button(text="🏠 MENU UTAMA", callback_data="main_menu")
         builder.adjust(2)
         
         await callback.message.edit_text(
@@ -92,8 +92,8 @@ async def process_meta(callback: types.CallbackQuery):
             callback_prefix=f"meta_page_{category}_"
         )
         builder = paginator.get_page(page)
-        builder.button(text="⬅️ Kembali", callback_data="meta_home")
-        builder.button(text="🏠 Menu Utama", callback_data="main_menu")
+        builder.button(text="◃ KEMBALI", callback_data="meta_home")
+        builder.button(text="🏠 MENU UTAMA", callback_data="main_menu")
         builder.adjust(2)
         
         await callback.message.edit_text(
@@ -115,8 +115,8 @@ async def process_meta(callback: types.CallbackQuery):
         )
         
         builder = InlineKeyboardBuilder()
-        builder.button(text="⬅️ Daftar Senjata", callback_data=f"meta_cat_{w['category']}")
-        builder.button(text="🏠 Menu Utama", callback_data="main_menu")
+        builder.button(text="◃ KEMBALI", callback_data=f"meta_cat_{w['category']}")
+        builder.button(text="🏠 MENU UTAMA", callback_data="main_menu")
         builder.adjust(1)
         
         await callback.message.edit_text(text, reply_markup=builder.as_markup())

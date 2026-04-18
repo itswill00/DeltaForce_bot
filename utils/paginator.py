@@ -35,7 +35,7 @@ class InlineKeyboardPaginator:
             if page < self.total_pages - 1:
                 builder.button(text="Next ➡️", callback_data=f"{self.callback_prefix}{page+1}")
         # Always add a close button
-        builder.button(text="[ Tutup ]", callback_data="close_msg")
+        builder.button(text="◃ TUTUP", callback_data="close_msg")
         # Adjust layout: 2 columns for items, navigation on separate row
         builder.adjust(2)
         return builder

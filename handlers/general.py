@@ -66,7 +66,18 @@ async def cmd_help(message: types.Message):
     )
     builder = InlineKeyboardBuilder()
     builder.button(text="◃ MENU UTAMA", callback_data="main_menu")
+
     await message.answer(text, reply_markup=builder.as_markup())
+
+@router.callback_query(F.data == "close_msg")
+async def process_close_msg(callback: types.CallbackQuery):
+    """Global handler to delete a message (Close button)."""
+    try:
+        await callback.message.delete()
+    except Exception:
+        # Fallback if message cannot be deleted (e.g. older than 48h)
+        await callback.answer("Pesan terlalu lama untuk dihapus.", show_alert=True)
+    await callback.answer()
 
 @router.message(CommandStart())
 async def cmd_start(message: types.Message, user_service: UserService, command: CommandStart):

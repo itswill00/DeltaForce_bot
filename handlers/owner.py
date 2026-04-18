@@ -33,7 +33,10 @@ async def cmd_sys(message: types.Message, user_service: UserService, lfg_service
     text += f"<b>Total User</b>: {user_count}\n"
     text += f"<b>LFG Aktif</b>: {active_lfg_count}\n"
     
-    await message.answer(text)
+    builder = InlineKeyboardBuilder()
+    builder.button(text="◃ TUTUP", callback_data="close_msg")
+    
+    await message.answer(text, reply_markup=builder.as_markup())
 
 @router.message(Command("refresh"))
 async def cmd_refresh(message: types.Message):
