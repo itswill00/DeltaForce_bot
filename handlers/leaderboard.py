@@ -4,7 +4,8 @@ from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from services.user_service import UserService
 from services.group_service import GroupService
-from utils.style_utils import get_header, get_footer
+from services.system_service import SystemService
+from utils.style_utils import get_header, get_footer, safe_edit_message
 from utils.auto_delete import set_auto_delete
 
 router = Router()
@@ -12,15 +13,14 @@ router = Router()
 @router.message(Command("leaderboard"))
 @router.callback_query(F.data == "main_leaderboard")
 @router.callback_query(F.data.startswith("lb_"))
-async def cmd_leaderboard(event: types.Message | types.CallbackQuery, user_service: UserService, group_service: GroupService):
-    is_callback = isinstance(event, types.CallbackQuery)
-    message = event.message if is_callback else event
+async def cmd_leaderboard(event: types.Message | types.CallbackQuery, user_service: UserService, group_service: GroupService, system_service: SystemService):
+    is_cb = isinstance(event, types.CallbackQuery)
+    message = event.message if is_cb else event
     
     scope = "global"
     if message.chat.type != "private":
         scope = "group"
-        
-    if is_callback and event.data.startswith("lb_"):
+    if is_cb and event.data.startswith("lb_"):
         scope = event.data.split("_")[1]
     
     if message.chat.type != "private":
@@ -34,7 +34,6 @@ async def cmd_leaderboard(event: types.Message | types.CallbackQuery, user_servi
         for uid in member_ids:
             u = await user_service.get_user(uid)
             if u: resolved_players.append(u)
-            
         top_mabar = sorted(resolved_players, key=lambda x: x.mabar_score, reverse=True)[:5]
         top_trivia = sorted(resolved_players, key=lambda x: x.trivia_score, reverse=True)[:5]
         title_s = f"Grup: {message.chat.title}"
@@ -44,17 +43,13 @@ async def cmd_leaderboard(event: types.Message | types.CallbackQuery, user_servi
         title_s = "Global Command"
 
     text = get_header(f"Peringkat - {title_s}", "🏆")
-    
     text += "⚔️ <b>Top Mabar (Operasi)</b>\n"
-    if not top_mabar:
-        text += "<i>Belum ada data.</i>\n"
+    if not top_mabar: text += "<i>Belum ada data.</i>\n"
     else:
         for i, p in enumerate(top_mabar):
             text += f"<code>{i+1}</code>. <b>{p.ign:10}</b> : <code>{p.mabar_score}</code>\n"
-            
     text += "\n🧠 <b>Top Trivia (Skor)</b>\n"
-    if not top_trivia:
-        text += "<i>Belum ada data.</i>\n"
+    if not top_trivia: text += "<i>Belum ada data.</i>\n"
     else:
         for i, p in enumerate(top_trivia):
             text += f"<code>{i+1}</code>. <b>{p.ign:10}</b> : <code>{p.trivia_score}</code>\n"
@@ -64,15 +59,15 @@ async def cmd_leaderboard(event: types.Message | types.CallbackQuery, user_servi
         builder.button(text="📍 LIHAT PERINGKAT GRUP", callback_data="lb_group")
     elif scope == "group":
         builder.button(text="🌍 LIHAT PERINGKAT GLOBAL", callback_data="lb_global")
-        
     if message.chat.type == "private":
         builder.button(text="🏠 KEMBALI KE MENU", callback_data="main_menu")
     builder.adjust(1)
     
-    if is_callback:
-        await event.message.edit_text(text, reply_markup=builder.as_markup())
-        await event.answer()
+    if is_cb:
+        await safe_edit_message(event, text, builder.as_markup())
     else:
-        resp = await event.answer(text, reply_markup=builder.as_markup())
+        banner = await system_service.get_banner("main")
+        from handlers.general import safe_answer_photo
+        await safe_answer_photo(event, banner, text, builder.as_markup())
         if message.chat.type != "private":
-            asyncio.create_task(set_auto_delete(resp, message, 120))
+            asyncio.create_task(set_auto_delete(None, message, 120)) # Fixed auto_delete call

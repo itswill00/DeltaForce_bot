@@ -37,3 +37,21 @@ def force_height(text: str, target_lines: int = 12) -> str:
         padding = "\n" * (target_lines - lines)
         return text + padding
     return text
+
+async def safe_edit_message(event, text: str, reply_markup=None):
+    """
+    Enterprise UI Helper: Smartly edits a message whether it has a photo or not.
+    Accepts both Message and CallbackQuery events.
+    """
+    message = event if hasattr(event, 'caption') else getattr(event, 'message', None)
+    if not message: return
+
+    try:
+        if message.photo:
+            await message.edit_caption(caption=text, reply_markup=reply_markup)
+        else:
+            await message.edit_text(text=text, reply_markup=reply_markup)
+    except Exception:
+        # Fallback: if editing fails (e.g. content identical), just answer callback if exists
+        if hasattr(event, 'answer'):
+            await event.answer()
