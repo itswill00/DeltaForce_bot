@@ -1,17 +1,21 @@
-from utils.style_utils import get_header, get_footer
+from utils.style_utils import get_header, get_footer, get_status_tag
 
 def render_lfg(session, player_names_with_roles):
-    """Symbolic minimalist LFG manifest."""
+    """Refined minimalist LFG for high-scale scannability."""
     tipe_str = "Hazard Ops" if session.lfg_type == "hazard" else "Havoc Warfare"
+    
+    # High-impact status line
+    status_label = "Mencari Tim" if session.status == 'open' else "Sesi Berjalan"
+    status_view = get_status_tag(session.status == 'open', status_label)
     
     text = get_header(f"{tipe_str}", "▣")
     
-    text += f"<b>Kuota</b>: {len(session.players)}/{session.max_players}\n"
-    text += f"<b>Status</b>: {'Pendaftaran Terbuka' if session.status == 'open' else 'Sesi Dimulai'}\n\n"
+    text += f"{status_view}\n"
+    text += f"📊 <b>Kuota</b>: <code>{len(session.players)}/{session.max_players}</code>\n\n"
     
     for i, name_role in enumerate(player_names_with_roles):
-        leader_tag = " ❖" if i == 0 else ""
-        text += f"<code>{i+1}</code>. {name_role}{leader_tag}\n"
+        is_host = " ❖" if i == 0 else ""
+        text += f"<code>{i+1:02}</code>. {name_role}{is_host}\n"
             
     for i in range(len(session.players), session.max_players):
         text += f"<code>{i+1}</code>. <i>(Kosong)</i>\n"

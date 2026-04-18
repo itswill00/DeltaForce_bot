@@ -12,13 +12,19 @@ def format_field(label: str, value: str, icon: str = "⬢") -> str:
     """Compact symbolic field formatting."""
     return f"{icon} <b>{label}</b>: <code>{value}</code>\n"
 
-def progress_bar(current: int, total: int, width: int = 8) -> str:
-    """Geometric minimalist progress bar."""
-    if total <= 0: return "<code>[--------]</code>"
+def progress_bar(current: int, total: int, width: int = 10) -> str:
+    """Geometric high-contrast progress bar."""
+    if total <= 0: return "<code>▱▱▱▱▱▱▱▱▱▱</code>"
     progress = min(current / total, 1.0)
     filled = int(progress * width)
-    bar = "■" * filled + "□" * (width - filled)
+    bar = "▰" * filled + "▱" * (width - filled)
     return f"<code>{bar}</code> {int(progress * 100)}%"
+
+def get_status_tag(is_active: bool, text: str) -> str:
+    """Returns a visual status tag (● active, ○ inactive)."""
+    icon = "●" if is_active else "○"
+    return f"{icon} <b>{text.upper()}</b>"
+
 
 def get_divider():
     """Minimal whitespace divider."""
