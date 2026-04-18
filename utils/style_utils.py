@@ -5,31 +5,32 @@ SEP_LINE = "──────────────────────�
 T_SEP = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 def get_header(title: str, icon: str = "🛡️") -> str:
-    """Returns a high-impact tactical header."""
+    """Returns a clean professional header."""
     return (
         f"{icon} <b>{title.upper()}</b>\n"
         f"<code>{T_SEP}</code>\n"
     )
 
-def get_footer(version: str = "v4.0.0-PRO") -> str:
-    """Returns a clean tactical footer."""
+def get_footer(text: str = None) -> str:
+    """Returns a minimal footer without robotic versioning."""
+    if not text:
+        return f"<code>{T_SEP}</code>"
     return (
         f"<code>{T_SEP}</code>\n"
-        f"<i>📡 Delta Force Hub | {version}</i>"
+        f"<i>{text}</i>"
     )
 
 def format_field(label: str, value: str, icon: str = "🔹") -> str:
-    """Formats a data field with a fixed-width look."""
-    return f"{icon} <b>{label:12}</b> : <code>{value}</code>\n"
+    """Formats a data field cleanly."""
+    return f"{icon} <b>{label}</b>: <code>{value}</code>\n"
 
 def progress_bar(current: int, total: int, width: int = 10) -> str:
-    """Generates a tactical progress bar."""
+    """Generates a clean progress bar."""
     if total <= 0: return "<code>[----------]</code>"
     progress = min(current / total, 1.0)
     filled = int(progress * width)
     bar = "█" * filled + "░" * (width - filled)
-    percent = int(progress * 100)
-    return f"<code>[{bar}]</code> {percent}%"
+    return f"<code>[{bar}]</code> {int(progress * 100)}%"
 
 def get_divider():
     """Simple separator."""

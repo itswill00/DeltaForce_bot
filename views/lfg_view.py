@@ -1,35 +1,35 @@
 from utils.style_utils import get_header, get_footer, format_field, get_divider
 
 def render_lfg(session, player_names_with_roles):
-    """Renders a friendly LFG squad gathering message."""
+    """Renders a clean and professional LFG squad gathering message."""
     player_count = len(session.players)
     max_p = session.max_players
-    status_text = "Mencari Anggota" if session.status == "open" else "Sudah Deploy"
+    status_text = "Mencari Tim" if session.status == "open" else "Sesi Berjalan"
     
-    tipe_str = "Hazard Operation" if session.lfg_type == "hazard" else "Havoc Warfare"
+    tipe_str = "Hazard Ops" if session.lfg_type == "hazard" else "Havoc Warfare"
     icon = "☣️" if session.lfg_type == "hazard" else "⚔️"
     
-    text = get_header(f"Mabar {tipe_str}", icon)
+    text = get_header(f"{tipe_str}", icon)
     
-    text += f"Status Skuad: <b>{status_text}</b>\n"
-    text += f"Kuota: <b>{player_count} dari {max_p} Operator</b>\n"
+    text += f"Status: <b>{status_text}</b>\n"
+    text += f"Operator: <b>{player_count} / {max_p}</b>\n"
     text += get_divider()
     
-    text += "📋 <b>Daftar Personel:</b>\n"
+    text += "📋 <b>Manifest Skuad:</b>\n"
     for i, name_role in enumerate(player_names_with_roles):
-        leader_tag = " 👑 <b>(Leader)</b>" if i == 0 else ""
+        leader_tag = " 👑" if i == 0 else ""
         text += f"{i+1}. {name_role}{leader_tag}\n"
             
     for i in range(player_count, max_p):
-        text += f"{i+1}. <i>(Masih Kosong)</i>\n"
+        text += f"{i+1}. <i>(Kosong)</i>\n"
     
     text += get_divider()
     
     if session.status == "open":
-        text += "Yuk, buruan gabung sebelum skuadnya penuh!"
+        text += "Silakan klik tombol di bawah untuk bergabung."
     else:
-        text += "Sesi sudah ditutup, tim sedang bersiap bertempur."
+        text += "Sesi pendaftaran telah ditutup."
 
-    text += "\n" + get_footer(f"ID Sesi: {session.id.upper()}")
+    text += "\n" + get_footer(f"Session ID: {session.id.upper()}")
     
     return text

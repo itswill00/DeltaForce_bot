@@ -1,31 +1,30 @@
 from utils.style_utils import get_header, get_footer, format_field, get_divider
 
 def render_dashboard(user_dto, is_reg, briefing=None, page=1):
-    """Renders a more human, community-focused dashboard."""
-    text = get_header("Markas Besar Delta Force", "🏠")
+    """Renders a clean, professional dashboard."""
+    text = get_header("Delta Force Indonesia", "🏠")
     
     if not is_reg:
         text += (
-            "<b>Selamat Datang, Operator!</b> 👋\n\n"
-            "Senang melihatmu di sini. Biar bisa akses fitur mabar, intel, dan statistik, "
-            "yuk daftarkan dirimu dulu ke komunitas.\n\n"
-            "<b>Caranya gampang banget:</b>\n"
-            "1️⃣ Klik tombol <b>Daftar Sekarang</b>\n"
-            "2️⃣ Masukkan nama in-game (IGN) kamu\n"
-            "3️⃣ Pilih role spesialisasi andalanmu"
+            "<b>Halo! Selamat bergabung di komunitas.</b> 👋\n\n"
+            "Daftarkan ID Operator kamu agar statistik mabar, level, dan badge "
+            "kamu bisa tercatat secara permanen.\n\n"
+            "<b>Langkah awal:</b>\n"
+            "1️⃣ Masukkan nama in-game (IGN)\n"
+            "2️⃣ Pilih role spesialisasi kamu"
         )
     else:
         if briefing:
-            text += f"📬 <b>Kabar Hari Ini:</b>\n<i>\"{briefing}\"</i>\n\n"
+            text += f"📢 <b>Info Hari Ini:</b>\n<i>\"{briefing}\"</i>\n\n"
         
-        text += f"Halo, <b>{user_dto.ign}</b>! Siap bertugas kembali?\n"
-        text += f"Saat ini kamu berada di <b>Level {user_dto.level}</b> dengan total <b>{user_dto.xp} XP</b>.\n"
+        text += f"Halo, <b>{user_dto.ign}</b>! Siap mabar lagi hari ini?\n"
+        text += f"Level kamu: <b>{user_dto.level}</b> | Total XP: <b>{user_dto.xp}</b>\n"
         
         text += get_divider()
         if page == 1:
-            text += "Mau ngapain kita hari ini? Pilih menunya di bawah ya:"
+            text += "Silakan pilih menu utama di bawah:"
         else:
-            text += "Lihat siapa yang paling jago atau cek bursa item di sini:"
+            text += "Fitur komunitas dan peringkat operator:"
             
-    text += "\n" + get_footer(f"Halaman {page}/2")
+    text += "\n" + get_footer()
     return text
