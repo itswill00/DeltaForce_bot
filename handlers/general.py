@@ -16,14 +16,13 @@ router = Router()
 def get_dashboard_kb(user_id: int, is_registered: bool = False, page: int = 1):
     builder = InlineKeyboardBuilder()
     
-    # Priority: COMMAND CENTER for Owner
     is_owner = int(user_id) == int(settings.owner_id)
-    if is_owner:
-        builder.button(text="◈ COMMAND CENTER", callback_data="admin_dashboard")
-
+    
     if not is_registered:
         builder.button(text="◈ DAFTAR SEKARANG", callback_data="start_register")
         builder.button(text="◇ PANDUAN PENGGUNAAN", callback_data="main_help")
+        if is_owner:
+            builder.button(text="◈ COMMAND CENTER", callback_data="admin_dashboard")
         builder.adjust(1)
     else:
         if page == 1:
@@ -34,16 +33,21 @@ def get_dashboard_kb(user_id: int, is_registered: bool = False, page: int = 1):
             builder.button(text="▹ MENU LAIN", callback_data="main_page_2")
             
             if is_owner:
-                builder.adjust(1, 2, 2, 1)
+                builder.button(text="◈ COMMAND CENTER", callback_data="admin_dashboard")
             else:
-                builder.adjust(2, 2, 1)
+                # Add an empty button placeholder to keep the grid 2x3
+                builder.button(text=" ", callback_data="none")
+                
+            builder.adjust(2) # 2x3 Grid
         else:
             builder.button(text="◈ PERINGKAT", callback_data="main_leaderboard")
             builder.button(text="⌬ BURSA ITEM", callback_data="main_shop")
             builder.button(text="⌬ SIMULASI", callback_data="main_trivia")
             builder.button(text="◇ OPERATOR", callback_data="main_operator")
             builder.button(text="◃ KEMBALI", callback_data="main_page_1")
-            builder.adjust(2, 2, 1)
+            builder.button(text=" ", callback_data="none") # Placeholder for grid symmetry
+            
+            builder.adjust(2) # 2x3 Grid
             
     return builder.as_markup()
 

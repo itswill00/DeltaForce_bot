@@ -19,4 +19,5 @@ def render_lfg(session, player_names_with_roles):
     if session.status == "open":
         text += "\nKlik ⬢ GABUNG untuk reservasi slot."
 
-    return text
+    from utils.style_utils import force_height
+    return force_height(text, 12)

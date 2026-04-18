@@ -23,3 +23,11 @@ def progress_bar(current: int, total: int, width: int = 8) -> str:
 def get_divider():
     """Minimal whitespace divider."""
     return "\n"
+
+def force_height(text: str, target_lines: int = 12) -> str:
+    """Pads text with empty lines to ensure consistent message height."""
+    lines = text.count('\n')
+    if lines < target_lines:
+        padding = "\n" * (target_lines - lines)
+        return text + padding
+    return text

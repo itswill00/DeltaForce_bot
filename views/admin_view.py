@@ -15,7 +15,8 @@ def render_admin_dashboard(stats):
         text += f"‣ <b>{role:10}</b>: <code>{count}</code>\n"
         
     text += "\n<i>Gunakan menu di bawah untuk manajemen personel.</i>"
-    return text
+    from utils.style_utils import force_height
+    return force_height(text, 12)
 
 def render_admin_user_detail(user_dto):
     """Detailed user view for admin management."""
@@ -35,4 +36,5 @@ def render_admin_user_detail(user_dto):
     text += f"🕒 <b>Last Active</b>: <code>{user_dto.last_login or 'Unknown'}</code>\n"
     text += f"🛡️ <b>Is Admin</b>: <code>{'YES' if user_dto.is_admin else 'NO'}</code>"
     
-    return text
+    from utils.style_utils import force_height
+    return force_height(text, 12)

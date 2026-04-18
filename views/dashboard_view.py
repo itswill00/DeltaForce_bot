@@ -23,4 +23,6 @@ def render_dashboard(user_dto, is_reg, briefing=None, page=1):
         text += "\nSilakan pilih menu di bawah:"
             
     text += get_footer(f"Sektor {page}/2")
-    return text
+    
+    from utils.style_utils import force_height
+    return force_height(text, 12)

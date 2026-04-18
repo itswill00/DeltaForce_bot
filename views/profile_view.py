@@ -26,4 +26,5 @@ def render_profile(user_dto, badges=None):
     
     text += f"<b>BADGES</b>: <i>{badge_text}</i>"
     
-    return text
+    from utils.style_utils import force_height
+    return force_height(text, 12)
