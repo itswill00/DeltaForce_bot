@@ -50,22 +50,25 @@ nano .env
 *   `OWNER_ID`: ID Telegram kamu (untuk akses `/refresh` dan `/sys`).
 *   `LOG_GROUP_ID`: ID Grup privat untuk backup database dan log audit.
 
-### 3. Deploy di VPS (Systemd)
-Agar bot tetap menyala otomatis meskipun VPS restart, buat service systemd:
+### 3. Deploy di VPS (Systemd dengan Self-Healing)
+Agar bot tetap menyala otomatis dan memiliki fitur **Automatic Rollback** jika update gagal, gunakan script sentinel:
+
 ```bash
+chmod +x run_bot.sh
 sudo nano /etc/systemd/system/deltaforce.service
 ```
-Tempelkan konfigurasi berikut (sesuaikan path):
+
+Tempelkan konfigurasi berikut:
 ```ini
 [Unit]
-Description=Delta Force Hub Bot
+Description=Delta Force Hub Bot (Sentinel Mode)
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/python3 /root/DeltaForce_bot/bot.py
+ExecStart=/bin/bash /root/DeltaForce_bot/run_bot.sh
 WorkingDirectory=/root/DeltaForce_bot
 Restart=always
-RestartSec=10
+RestartSec=5
 User=root
 
 [Install]
