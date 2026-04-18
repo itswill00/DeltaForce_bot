@@ -20,6 +20,7 @@ bot = Bot(token=settings.bot_token, default=DefaultBotProperties(parse_mode=Pars
 dp = Dispatcher()
 
 # Middlewares
+from middlewares.error_handler import ErrorHandlerMiddleware
 from middlewares.db_session import DbSessionMiddleware
 from middlewares.registration import RegistrationMiddleware
 from middlewares.event_logger import EventLoggerMiddleware
@@ -47,12 +48,14 @@ async def notify_restart_success():
             logging.error(f"Failed to send restart notification: {e}")
 
 async def main():
-    # 1. Setup Enterprise Middlewares
-    dp.update.outer_middleware(ThrottlingMiddleware(rate_limit=1.5))
-    dp.update.outer_middleware(DbSessionMiddleware())
-    dp.update.outer_middleware(EventLoggerMiddleware())
-    dp.message.middleware(RegistrationMiddleware())
-    dp.callback_query.middleware(RegistrationMiddleware())
+    # 1. Setup Enterprise Middlewares (Outermost First)
+    dp.update.outer_middleware(ErrorHandlerMiddleware())            # Global Error Sentinel
+    dp.update.outer_middleware(ThrottlingMiddleware(rate_limit=1.5)) # Anti-Spam
+    dp.update.outer_middleware(DbSessionMiddleware())               # DB Session
+    dp.update.outer_middleware(EventLoggerMiddleware())             # Interaction Logger
+    
+    dp.message.middleware(RegistrationMiddleware())                  # Gatekeeper
+    dp.callback_query.middleware(RegistrationMiddleware())           # Gatekeeper
     
     # 2. Include Routers
     from handlers import general, profile, lfg, meta, leaderboard, admin, owner, operator, shop, inline, group_settings, intel, trivia
@@ -82,7 +85,7 @@ async def main():
     asyncio.create_task(auto_news_fetcher(bot))
     asyncio.create_task(database_backup_scheduler(bot))
     
-    # Notify restart success (non-blocking)
+    # Notify restart success
     asyncio.create_task(notify_restart_success())
 
     # Start polling
